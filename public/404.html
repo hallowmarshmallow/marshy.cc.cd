@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hallowmarsh — redirecting…</title>
+    <script>
+      // GitHub Pages SPA fallback: forward path to root so the router can take over.
+      ;(function () {
+        var parts = window.location.pathname.split('/')
+        var base = parts.slice(1, parts.length - 0).length > 1 ? '/' + parts[1] : ''
+        // Repo pages serve under /<repo>/; custom domain serves at root.
+        var isProjectPage = window.location.hostname.endsWith('github.io')
+        var prefix = isProjectPage ? '/' + parts[1] : ''
+        var rest = isProjectPage ? '/' + parts.slice(2).join('/') : window.location.pathname
+        window.location.replace(
+          prefix + '/index.html?p=' + encodeURIComponent(rest + window.location.search + window.location.hash),
+        )
+      })()
+    </script>
+  </head>
+  <body></body>
+</html>

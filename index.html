@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b0f0d" />
+    <meta name="description" content="Hallowmarsh — a small place on the internet. Portfolio and community." />
+    <title>Hallowmarsh</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+      // GitHub Pages SPA fallback companion (based on the well-known hack):
+      // 404.html redirects here with ?p=<original path>; restore it before the app boots.
+      ;(function () {
+        var l = window.location
+        if (l.search.indexOf('p=') === 0) {
+          var p = new URLSearchParams(l.search.slice(1)).get('p')
+          if (p) {
+            history.replaceState(null, '', p)
+            document.title = 'Hallowmarsh'
+          }
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
