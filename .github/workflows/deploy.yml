@@ -47,9 +47,25 @@ jobs:
     needs: deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Smoke test (homepage 200)
+      - name: Smoke test (homepage 200 + bundled assets, not raw source)
         run: |
           url="${{ needs.deploy.outputs.url }}"
           code=$(curl -s -o /dev/null -w "%{http_code}" "$url")
           echo "Homepage: $code"
           test "$code" = "200"
+
+          html=$(curl -s "$url")
+          # Fail loudly if Pages ever regresses to legacy/branch mode: serving
+          # raw /src/main.tsx is exactly what blanked the site before.
+          if echo "$html" | grep -q '/src/main.tsx'; then
+            echo "::error::Serving raw /src/main.tsx — Pages is in 'Deploy from a branch' mode. Set Source to 'GitHub Actions' in Settings → Pages."
+            exit 1
+          fi
+
+          # The built bundle must exist and be fetchable.
+          asset=$(echo "$html" | grep -o 'src="/assets/[^"]*\.js"' | head -1 | sed 's/src="//;s/"//')
+          echo "Bundle: $asset"
+          test -n "$asset"
+          acode=$(curl -s -o /dev/null -w "%{http_code}" "$url$asset")
+          echo "Bundle status: $acode"
+          test "$acode" = "200"
