@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export function EmptyState({ icon, title, hint }: { icon: string; title: string; hint?: ReactNode }) {
+export function EmptyState({ icon, title, hint }: { icon: ReactNode; title: string; hint?: ReactNode }) {
   return (
     <div className="empty-state">
       <div className="empty-state-icon" aria-hidden="true">

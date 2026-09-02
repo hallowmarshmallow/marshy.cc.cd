@@ -14,6 +14,7 @@
   --color-accent-strong: #8ff0c4;
   --color-accent-dim: #3fae82;
   --color-accent-alt: #b39ddb;
+  --color-accent-warm: #e8b06f;
 
   --color-text: #e6efea;
   --color-text-muted: #9db4aa;
@@ -60,6 +61,7 @@
 
   /* Typography */
   --font-display: 'Sora', system-ui, sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Inter', system-ui, sans-serif;
 
   /* Glass (used selectively: nav, modals, cards over atmosphere) */

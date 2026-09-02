@@ -54,13 +54,18 @@ begin
       || '_' || left(new.id::text, 4),          -- uniqueness without blocking signup
     coalesce(new.raw_user_meta_data->>'display_name', 'newcomer')
   );
-  -- Bootstrap: very first profile becomes Owner (§7.8 — document: env-free bootstrap)
-  if (select count(*) from public.profiles) = 1 then
-    insert into public.user_roles (user_id, role_key)
-    select new.id, 'owner';
-  else
+  -- Bootstrap: the earliest CONFIRMED account becomes Owner (§7.8).
+  if exists (
+    select 1 from public.profiles p
+    join auth.users u on u.id = p.user_id
+    where u.email_confirmed_at is not null
+      and p.user_id <> new.id
+  ) then
     insert into public.user_roles (user_id, role_key)
     select new.id, 'new_member';
+  else
+    insert into public.user_roles (user_id, role_key)
+    select new.id, 'owner';
   end if;
   return new;
 end $$;
@@ -302,8 +307,8 @@ create policy posts_insert on public.posts for insert
 create policy posts_update on public.posts for update
   using (auth.uid() = author_id and deleted_at is null);
 
--- soft-delete own posts
-create policy posts_soft_delete on public.posts for delete
+-- soft-delete own posts (moderators may hard-remove per §6.3)
+create policy posts_delete on public.posts for delete
   using (
     auth.uid() = author_id
     or public.has_role(auth.uid(), 60)  -- moderator+
@@ -332,9 +337,9 @@ create policy role_perms_read on public.role_permissions for select using (true)
 create policy role_perms_manage on public.role_permissions for all
   using (public.has_role(auth.uid(), 100)) with check (public.has_role(auth.uid(), 100));
 
--- metrics: nobody but owner via service role; audit: read owner, insert system
-create policy metrics_denied  on public.platform_metrics for select using (public.has_role(auth.uid(), 100));
-create policy audit_read      on public.audit_log for select using (public.has_role(auth.uid(), 100));
+-- metrics: owner only; audit: read owner, insert system
+create policy metrics_read  on public.platform_metrics for select using (public.has_role(auth.uid(), 100));
+create policy audit_read    on public.audit_log for select using (public.has_role(auth.uid(), 100));
 
 -- ============================================================
 -- Storage bucket (avatars/banners) — run once
@@ -347,7 +352,8 @@ on conflict (id) do nothing;
 -- Backfill: accounts that existed BEFORE this migration ran
 -- (e.g. the owner account created via dashboard/API first).
 -- The signup trigger above only fires on future inserts, so we
--- backfill profiles here; the EARLIEST account becomes owner.
+-- backfill profiles here; the EARLIEST CONFIRMED account becomes
+-- owner (unconfirmed duplicates are ignored → no ownership race).
 -- Idempotent: safe to re-run.
 -- ============================================================
 insert into public.profiles (user_id, handle, display_name)
@@ -369,7 +375,14 @@ where u.email is not null
 insert into public.user_roles (user_id, role_key)
 select p.user_id,
   case
-    when p.user_id = (select user_id from public.profiles order by created_at asc, user_id asc limit 1)
+    when p.user_id = (
+      select p2.user_id
+      from public.profiles p2
+      join auth.users u2 on u2.id = p2.user_id
+      where u2.email_confirmed_at is not null
+      order by u2.email_confirmed_at asc, p2.user_id asc
+      limit 1
+    )
       then 'owner'
     else 'new_member'
   end

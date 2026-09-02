@@ -23,16 +23,22 @@ export function FeedPage() {
   return (
     <div className="app-shell">
       <nav className="app-nav glass" aria-label="Primary">
-        <span className="app-brand">Hallowmarsh</span>
+        <span className="app-brand">
+          <i className="fa-solid fa-ghost app-brand-icon" aria-hidden="true" /> Hallowmarsh
+        </span>
         <div className="app-nav-actions">
           {session?.email ? <span className="app-nav-email">{session.email}</span> : null}
           <button type="button" className="btn btn-ghost" onClick={() => void onSignOut()}>
-            Sign out
+            <i className="fa-solid fa-right-from-bracket" aria-hidden="true" /> Sign out
           </button>
         </div>
       </nav>
       <main className="app-main">
-        <EmptyState icon="🌿" title="Your marsh is quiet." hint="The feed sprouts in Phase 2." />
+        <EmptyState
+          icon={<i className="fa-solid fa-leaf" aria-hidden="true" />}
+          title="Your marsh is quiet."
+          hint="The feed sprouts in Phase 2."
+        />
       </main>
     </div>
   )

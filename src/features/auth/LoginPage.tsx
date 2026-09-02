@@ -5,10 +5,10 @@ import { useToast } from '../../components/ui/Toast'
 import { backend, BackendError, isBackendConfigured, UNCONFIGURED_MESSAGE } from '../../services'
 import type { AuthProvider } from '../../types/domain'
 
-const OAUTH_BUTTONS: Array<{ provider: Exclude<AuthProvider, 'email'>; label: string }> = [
-  { provider: 'google', label: 'Continue with Google' },
-  { provider: 'discord', label: 'Continue with Discord' },
-  { provider: 'github', label: 'Continue with GitHub' },
+const OAUTH_BUTTONS: Array<{ provider: Exclude<AuthProvider, 'email'>; label: string; icon: string }> = [
+  { provider: 'google', label: 'Continue with Google', icon: 'fa-brands fa-google' },
+  { provider: 'discord', label: 'Continue with Discord', icon: 'fa-brands fa-discord' },
+  { provider: 'github', label: 'Continue with GitHub', icon: 'fa-brands fa-github' },
 ]
 
 export function LoginPage({ onAuthSuccess }: { onAuthSuccess: () => void }) {
@@ -56,10 +56,16 @@ export function LoginPage({ onAuthSuccess }: { onAuthSuccess: () => void }) {
   return (
     <main className="auth-page">
       <GlassCard className="auth-card">
+        <p className="auth-glyph" aria-hidden="true">
+          <i className="fa-solid fa-ghost" />
+        </p>
         <h1 className="auth-title">Enter the marsh</h1>
         {!configured ? (
           <div className="auth-unconfigured" role="note">
-            <p>The backend isn&rsquo;t connected yet — accounts can&rsquo;t work without one. The fix is two values:</p>
+            <p>
+              <i className="fa-solid fa-plug-circle-exclamation" aria-hidden="true" /> The backend isn&rsquo;t
+              connected yet — accounts can&rsquo;t work without one. The fix is two values:
+            </p>
             <ol>
               <li>
                 Create a free project at{' '}
@@ -77,9 +83,9 @@ export function LoginPage({ onAuthSuccess }: { onAuthSuccess: () => void }) {
         ) : (
           <>
             <div className="oauth-stack">
-              {OAUTH_BUTTONS.map(({ provider, label }) => (
+              {OAUTH_BUTTONS.map(({ provider, label, icon }) => (
                 <Button key={provider} variant="ghost" onClick={() => void onOAuth(provider)}>
-                  {label}
+                  <i className={icon} aria-hidden="true" /> {label}
                 </Button>
               ))}
             </div>
@@ -124,7 +130,15 @@ export function LoginPage({ onAuthSuccess }: { onAuthSuccess: () => void }) {
                 8+ characters.
               </p>
               <Button type="submit" loading={busy} className="auth-submit">
-                {mode === 'signup' ? 'Create account' : 'Sign in'}
+                {mode === 'signup' ? (
+                  <>
+                    <i className="fa-solid fa-seedling" aria-hidden="true" /> Create account
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-door-open" aria-hidden="true" /> Sign in
+                  </>
+                )}
               </Button>
             </form>
             <button

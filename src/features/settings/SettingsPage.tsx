@@ -15,7 +15,9 @@ export function SettingsPage() {
   return (
     <div className="app-shell">
       <nav className="app-nav glass" aria-label="Primary">
-        <span className="app-brand">Hallowmarsh</span>
+        <span className="app-brand">
+          <i className="fa-solid fa-ghost app-brand-icon" aria-hidden="true" /> Hallowmarsh
+        </span>
         <button type="button" className="btn btn-ghost" onClick={() => navigate('/feed')}>
           Back
         </button>
@@ -29,11 +31,13 @@ export function SettingsPage() {
             {session?.emailVerified ? '' : ' (email not yet verified)'}
           </p>
           <button type="button" className="btn btn-ghost" onClick={() => void onSignOut()}>
-            Sign out
+            <i className="fa-solid fa-right-from-bracket" aria-hidden="true" /> Sign out
           </button>
         </GlassCard>
         <GlassCard className="settings-card">
-          <h2>Profile editing</h2>
+          <h2>
+            <i className="fa-solid fa-user-pen" aria-hidden="true" /> Profile editing
+          </h2>
           {configured ? (
             <p>Profile editing connects to the database once the Phase-1 schema migration is applied.</p>
           ) : (
