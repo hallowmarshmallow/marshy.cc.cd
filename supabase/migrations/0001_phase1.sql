@@ -342,3 +342,36 @@ create policy audit_read      on public.audit_log for select using (public.has_r
 insert into storage.buckets (id, name, public)
 values ('media', 'media', true)
 on conflict (id) do nothing;
+
+-- ============================================================
+-- Backfill: accounts that existed BEFORE this migration ran
+-- (e.g. the owner account created via dashboard/API first).
+-- The signup trigger above only fires on future inserts, so we
+-- backfill profiles here; the EARLIEST account becomes owner.
+-- Idempotent: safe to re-run.
+-- ============================================================
+insert into public.profiles (user_id, handle, display_name)
+select
+  u.id,
+  case
+    when not exists (
+      select 1 from public.profiles p2
+      where p2.handle = split_part(u.email, '@', 1)
+    )
+    then split_part(u.email, '@', 1)
+    else split_part(u.email, '@', 1) || '_' || left(u.id::text, 4)
+  end,
+  coalesce(nullif(u.raw_user_meta_data->>'display_name', ''), split_part(u.email, '@', 1))
+from auth.users u
+where u.email is not null
+  and not exists (select 1 from public.profiles p where p.user_id = u.id);
+
+insert into public.user_roles (user_id, role_key)
+select p.user_id,
+  case
+    when p.user_id = (select user_id from public.profiles order by created_at asc, user_id asc limit 1)
+      then 'owner'
+    else 'new_member'
+  end
+from public.profiles p
+where not exists (select 1 from public.user_roles ur where ur.user_id = p.user_id);
