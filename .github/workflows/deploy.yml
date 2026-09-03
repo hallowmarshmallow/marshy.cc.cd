@@ -16,6 +16,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # Secrets live under the github-pages ENVIRONMENT, so this job must
+    # declare it — environment secrets are never visible to jobs without one.
+    environment: github-pages
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
