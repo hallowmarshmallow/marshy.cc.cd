@@ -165,10 +165,18 @@ begin
   end if;
 end $$;
 
-create trigger reactions_bump_post_count
-  after insert or delete on public.reactions
+-- DELETE triggers cannot reference NEW (42P17); split by event so each
+-- WHEN clause only touches the row the event actually provides.
+create trigger reactions_bump_post_count_insert
+  after insert on public.reactions
   for each row
-  when (new.reactable_type = 'post' or old.reactable_type = 'post')
+  when (new.reactable_type = 'post')
+  execute function public.bump_post_reaction_count();
+
+create trigger reactions_bump_post_count_delete
+  after delete on public.reactions
+  for each row
+  when (old.reactable_type = 'post')
   execute function public.bump_post_reaction_count();
 
 -- ---------- roles & permissions (§7.8) ----------
