@@ -15,7 +15,7 @@ Rule V1: no infrastructure decision is committed until its row has a `Verified o
 ## Standing actions
 
 - **Weekly:** record `platform_metrics` snapshot next to this table; check Supabase usage in the dashboard; **confirm the Supabase project has not paused** (heartbeat cron lands with Phase 2).
-- **Quarterly:** re-verify every row against its doc URL; update `Verified on` dates; rotate OAuth secrets where providers allow.
+- **Anti-pause heartbeat:** `.github/workflows/heartbeat.yml` runs Mon + Thu 12:00 UTC and fires a real SELECT at the DB via the anon key (RLS-public `profiles` read), resetting Supabase's ~7-day idle-pause clock. Keys come from the `github-pages` environment secrets. Red run = project paused or keys stale — check immediately.- **Quarterly:** re-verify every row against its doc URL; update `Verified on` dates; rotate OAuth secrets where providers allow.
 - **Threshold policy (§5.4):** ≤50% → log only · 75% → optimization task · 90% → owner paged, §16 Stage 1–2 · 100% → runbook, never auto-upgrade to paid.
 
 ## Known open items

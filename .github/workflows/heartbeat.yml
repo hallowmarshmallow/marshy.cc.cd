@@ -1,0 +1,35 @@
+name: Supabase heartbeat
+on:
+  schedule:
+    # Twice weekly (Mon + Thu) — leaves margin under Supabase's ~7-day
+    # auto-pause window for free projects if a run ever fails silently.
+    - cron: '0 12 * * 1,4'
+  workflow_dispatch:
+
+# The keys live under the github-pages ENVIRONMENT, so the job must
+# declare it (same scoping rule that fixed the deploy build).
+permissions:
+  contents: read
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    environment: github-pages
+    steps:
+      - name: Wake the database
+        env:
+          URL: ${{ secrets.VITE_SUPABASE_URL }}
+          KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          test -n "$URL" && test -n "$KEY" || { echo "::error::Supabase secrets missing (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY under github-pages env)."; exit 1; }
+
+          # A real SELECT against a public-read table counts as database
+          # activity, resetting the 7-day idle-pause clock. Any authenticated
+          # query would do; profiles_read is public by design (RLS).
+          code=$(curl -s -o /tmp/heartbeat.json -w "%{http_code}" \
+            "$URL/rest/v1/profiles?select=user_id&limit=1&order=created_at" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+
+          echo "Profiles query: HTTP $code"
+          test "$code" = "200" || { echo "::error::Database did not answer (HTTP $code) — check the project isn't paused or the keys are stale."; exit 1; }
+          echo "Database awake ✓ (pause clock reset)"
