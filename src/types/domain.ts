@@ -33,6 +33,11 @@ export interface Post {
   commentCount: number
 }
 
+export interface FollowCounts {
+  followers: number
+  following: number
+}
+
 export type AuthProvider = 'google' | 'discord' | 'github' | 'email'
 
 export interface SessionInfo {

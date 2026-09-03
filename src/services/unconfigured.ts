@@ -23,4 +23,10 @@ export const unconfiguredAdapter: BackendAdapter = {
     getByHandle: unconfigured,
     updateOwn: unconfigured,
   },
+  social: {
+    getFollowCounts: unconfigured,
+    isFollowing: unconfigured,
+    follow: unconfigured,
+    unfollow: unconfigured,
+  },
 }

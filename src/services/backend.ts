@@ -3,7 +3,7 @@
  * Features import this interface, never Supabase/Firebase/whatever directly.
  * Swapping providers touches src/services only.
  */
-import type { AuthProvider, Profile, SessionInfo } from '../types/domain'
+import type { AuthProvider, FollowCounts, Profile, SessionInfo } from '../types/domain'
 import type { ErrorCode } from './errors'
 
 export interface SignUpInput {
@@ -32,10 +32,27 @@ export interface ProfileAdapter {
   updateOwn(patch: Partial<Pick<Profile, 'displayName' | 'bio' | 'customStatus' | 'avatarUrl' | 'bannerUrl' | 'presence'>>): Promise<Profile>
 }
 
+/**
+ * Social graph (§7.4): one-way follows in Phase 1/2; mutual friendships
+ * arrive as a separate table in a later phase. Server-side RLS enforces
+ * that follow edges can only be created/deleted by their owner.
+ */
+export interface SocialAdapter {
+  /** Followers + following counts for one profile (public reads). */
+  getFollowCounts(userId: string): Promise<FollowCounts>
+  /** Whether `followerId` currently follows `followeeId`. */
+  isFollowing(followerId: string, followeeId: string): Promise<boolean>
+  /** The signed-in user starts following `targetUserId`. */
+  follow(targetUserId: string): Promise<void>
+  /** The signed-in user stops following `targetUserId`. */
+  unfollow(targetUserId: string): Promise<void>
+}
+
 export interface BackendAdapter {
   readonly name: string
   readonly auth: AuthAdapter
   readonly profiles: ProfileAdapter
+  readonly social: SocialAdapter
 }
 
 /** Thrown (as BackendError) by the placeholder adapter until a provider is configured. */

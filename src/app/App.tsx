@@ -4,6 +4,7 @@ import { useSession } from '../hooks/useSession'
 import { PortfolioPage } from '../features/portfolio/PortfolioPage'
 import { LoginPage } from '../features/auth/LoginPage'
 import { FeedPage } from '../features/feed/FeedPage'
+import { ProfilePage } from '../features/profiles/ProfilePage'
 import { SettingsPage } from '../features/settings/SettingsPage'
 import { NotFoundPage } from './NotFoundPage'
 
@@ -35,8 +36,8 @@ export function App() {
 
   const profileMatch = matchRoute('/u/:handle', path)
   if (profileMatch) {
-    // Phase 1: profile pages arrive with the profiles feature; honest placeholder until then.
-    return <NotFoundPage thing="Profile pages" />
+    // Profiles are public reads (§6.3); guests may view, members follow.
+    return <ProfilePage handle={profileMatch.handle} />
   }
 
   switch (path) {

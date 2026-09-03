@@ -132,6 +132,67 @@ export const supabaseAdapter: BackendAdapter = {
       return mapProfile(data)
     },
   },
+
+  social: {
+    async getFollowCounts(userId) {
+      const [followers, following] = await Promise.all([
+        countRows('follows', 'follower_id', 'followee_id', userId),
+        countRows('follows', 'followee_id', 'follower_id', userId),
+      ])
+      return { followers, following }
+    },
+
+    async isFollowing(followerId, followeeId) {
+      const { data, error } = await client()
+        .from('follows')
+        .select('follower_id')
+        .eq('follower_id', followerId)
+        .eq('followee_id', followeeId)
+        .maybeSingle()
+      if (error) throw new BackendError('server_error', 'Could not check the follow state. Retry in a moment.')
+      return data !== null
+    },
+
+    async follow(targetUserId) {
+      const session = await supabaseAdapter.auth.getSession()
+      if (!session) throw new BackendError('auth_required', 'Sign in to follow people.')
+
+      const { error } = await client().from('follows').insert({
+        follower_id: session.userId,
+        followee_id: targetUserId,
+      })
+      if (error) {
+        // RLS already blocks following yourself (PK/check) and impersonation.
+        const m = error.message.toLowerCase()
+        if (m.includes('duplicate') || m.includes('unique constraint')) {
+          throw new BackendError('conflict', 'You already follow them.')
+        }
+        throw new BackendError('forbidden', 'Could not follow right now. Try again in a moment.')
+      }
+    },
+
+    async unfollow(targetUserId) {
+      const session = await supabaseAdapter.auth.getSession()
+      if (!session) throw new BackendError('auth_required', 'Sign in to unfollow people.')
+
+      const { error } = await client()
+        .from('follows')
+        .delete()
+        .eq('follower_id', session.userId)
+        .eq('followee_id', targetUserId)
+      if (error) throw new BackendError('server_error', 'Could not unfollow right now. Try again in a moment.')
+    },
+  },
+}
+
+/** HEAD count query against `table` filtered by `matchColumn = value`. */
+async function countRows(table: string, selectColumn: string, matchColumn: string, value: string): Promise<number> {
+  const { count, error } = await client()
+    .from(table)
+    .select(selectColumn, { count: 'exact', head: true })
+    .eq(matchColumn, value)
+  if (error) throw new BackendError('server_error', 'Could not load follow counts. Retry in a moment.')
+  return count ?? 0
 }
 
 /** Maps Supabase auth messages to §3.3 codes. */
