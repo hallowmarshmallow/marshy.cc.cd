@@ -3,7 +3,7 @@
  * Features import this interface, never Supabase/Firebase/whatever directly.
  * Swapping providers touches src/services only.
  */
-import type { AuthProvider, FollowCounts, Profile, SessionInfo } from '../types/domain'
+import type { AuthProvider, FollowCounts, Post, Profile, ReactionType, SessionInfo, Visibility } from '../types/domain'
 import type { ErrorCode } from './errors'
 
 export interface SignUpInput {
@@ -17,6 +17,11 @@ export interface SignInInput {
   password: string
 }
 
+export interface CreatePostInput {
+  body: string
+  visibility?: Visibility
+}
+
 export interface AuthAdapter {
   /** Returns null when not signed in. */
   getSession(): Promise<SessionInfo | null>
@@ -28,6 +33,7 @@ export interface AuthAdapter {
 }
 
 export interface ProfileAdapter {
+  getOwn(): Promise<Profile | null>
   getByHandle(handle: string): Promise<Profile | null>
   updateOwn(patch: Partial<Pick<Profile, 'displayName' | 'bio' | 'customStatus' | 'avatarUrl' | 'bannerUrl' | 'presence'>>): Promise<Profile>
 }
@@ -48,11 +54,32 @@ export interface SocialAdapter {
   unfollow(targetUserId: string): Promise<void>
 }
 
+/**
+ * Posts & Feed (§17, Phase 2):
+ * Reverse-chronological feed respecting RLS (public posts, followed friends, own posts).
+ * Registry-driven reactions (§7.5) with atomic trigger-maintained counts.
+ */
+export interface PostsAdapter {
+  /** List feed posts in reverse chronological order. */
+  listFeed(options?: { limit?: number }): Promise<Post[]>
+  /** List posts by a specific user (for profile page). */
+  listByAuthor(authorId: string, options?: { limit?: number }): Promise<Post[]>
+  /** Create a post (1-2000 chars, public or friends). */
+  create(input: CreatePostInput): Promise<Post>
+  /** Soft-delete or remove a post. Author or moderator only. */
+  delete(postId: string): Promise<void>
+  /** Toggle reaction on a post for the authenticated user. */
+  toggleReaction(postId: string, reactionType: string): Promise<{ reacted: boolean }>
+  /** Active reaction types from the registry. */
+  getReactionTypes(): Promise<ReactionType[]>
+}
+
 export interface BackendAdapter {
   readonly name: string
   readonly auth: AuthAdapter
   readonly profiles: ProfileAdapter
   readonly social: SocialAdapter
+  readonly posts: PostsAdapter
 }
 
 /** Thrown (as BackendError) by the placeholder adapter until a provider is configured. */

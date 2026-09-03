@@ -5,7 +5,7 @@ import { UNCONFIGURED_MESSAGE, type BackendAdapter } from './backend'
  * Placeholder adapter used when no provider is configured (e.g. fresh clone).
  * Fails loudly and honestly — it never fakes success (§0.3-1).
  */
-function unconfigured(): never {
+async function unconfigured(): Promise<never> {
   throw new BackendError('provider_error', UNCONFIGURED_MESSAGE)
 }
 
@@ -20,6 +20,7 @@ export const unconfiguredAdapter: BackendAdapter = {
     requestPasswordReset: unconfigured,
   },
   profiles: {
+    getOwn: unconfigured,
     getByHandle: unconfigured,
     updateOwn: unconfigured,
   },
@@ -28,5 +29,13 @@ export const unconfiguredAdapter: BackendAdapter = {
     isFollowing: unconfigured,
     follow: unconfigured,
     unfollow: unconfigured,
+  },
+  posts: {
+    listFeed: unconfigured,
+    listByAuthor: unconfigured,
+    create: unconfigured,
+    delete: unconfigured,
+    toggleReaction: unconfigured,
+    getReactionTypes: unconfigured,
   },
 }

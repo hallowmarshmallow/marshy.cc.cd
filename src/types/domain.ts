@@ -19,6 +19,13 @@ export interface Profile {
   joinedAt: string
 }
 
+export interface ReactionType {
+  key: string
+  label: string
+  glyph: string
+  sort: number
+}
+
 export interface Post {
   id: string
   authorId: string
@@ -31,6 +38,8 @@ export interface Post {
   deletedAt: string | null
   reactionCount: number
   commentCount: number
+  myReactions?: string[]
+  reactionBreakdown?: Record<string, number>
 }
 
 export interface FollowCounts {

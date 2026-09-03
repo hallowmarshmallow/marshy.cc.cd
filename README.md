@@ -2,7 +2,7 @@
 
 A small-community social platform + portfolio ecosystem. Dark, glassy, atmospheric — *our place on the internet.*
 
-**Status:** Phase 1 scaffolding complete. Auth-ready, feed arrives in Phase 2 (see `docs/` for the roadmap).
+**Status:** Phase 2 complete. Community feed, post composer, member ripples, and registry-driven reactions are live.
 
 ## Stack
 

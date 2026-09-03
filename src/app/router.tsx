@@ -56,11 +56,25 @@ export function navigate(to: string) {
   window.location.hash = to
 }
 
-export function Link({ to, children, className }: { to: string; children: ReactNode; className?: string }) {
+export function Link({
+  to,
+  children,
+  className,
+  title,
+  'aria-label': ariaLabel,
+}: {
+  to: string
+  children: ReactNode
+  className?: string
+  title?: string
+  'aria-label'?: string
+}) {
   return (
     <a
       href={`#${to}`}
       className={className}
+      title={title}
+      aria-label={ariaLabel}
       onClick={(e) => {
         if (window.location.hash === `#${to}`) e.preventDefault()
       }}

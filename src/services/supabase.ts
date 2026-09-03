@@ -1,6 +1,6 @@
 /* eslint-disable-next-line no-restricted-imports -- this file IS the Supabase adapter */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { AuthProvider, Profile, SessionInfo } from '../types/domain'
+import type { AuthProvider, Post, Profile, ReactionType, SessionInfo, Visibility } from '../types/domain'
 import { BackendError } from './errors'
 import { UNCONFIGURED_MESSAGE, type BackendAdapter } from './backend'
 
@@ -101,6 +101,18 @@ export const supabaseAdapter: BackendAdapter = {
   },
 
   profiles: {
+    async getOwn() {
+      const session = await supabaseAdapter.auth.getSession()
+      if (!session) return null
+      const { data, error } = await client()
+        .from('profiles')
+        .select('*')
+        .eq('user_id', session.userId)
+        .maybeSingle()
+      if (error) throw new BackendError('server_error', 'Could not load your profile. Retry in a moment.')
+      return data ? mapProfile(data) : null
+    },
+
     async getByHandle(handle) {
       const { data, error } = await client()
         .from('profiles')
@@ -183,6 +195,259 @@ export const supabaseAdapter: BackendAdapter = {
       if (error) throw new BackendError('server_error', 'Could not unfollow right now. Try again in a moment.')
     },
   },
+
+  posts: {
+    async listFeed(options) {
+      const { data, error } = await client()
+        .from('posts')
+        .select(`
+          id,
+          author_id,
+          body,
+          visibility,
+          created_at,
+          updated_at,
+          deleted_at,
+          author:profiles!posts_author_id_fkey(handle, display_name, avatar_url),
+          post_reaction_counts(count)
+        `)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(options?.limit ?? 50)
+
+      if (error) {
+        throw new BackendError('server_error', 'Could not load feed. Retry in a moment.')
+      }
+      return enrichPosts((data ?? []) as Record<string, unknown>[])
+    },
+
+    async listByAuthor(authorId, options) {
+      const { data, error } = await client()
+        .from('posts')
+        .select(`
+          id,
+          author_id,
+          body,
+          visibility,
+          created_at,
+          updated_at,
+          deleted_at,
+          author:profiles!posts_author_id_fkey(handle, display_name, avatar_url),
+          post_reaction_counts(count)
+        `)
+        .eq('author_id', authorId)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(options?.limit ?? 50)
+
+      if (error) {
+        throw new BackendError('server_error', 'Could not load member posts. Retry in a moment.')
+      }
+      return enrichPosts((data ?? []) as Record<string, unknown>[])
+    },
+
+    async create(input) {
+      const session = await supabaseAdapter.auth.getSession()
+      if (!session) throw new BackendError('auth_required', 'Sign in to create a post.')
+
+      const body = input.body.trim()
+      if (body.length === 0) {
+        throw new BackendError('validation_failed', 'Post body cannot be empty.')
+      }
+      if (body.length > 2000) {
+        throw new BackendError('validation_failed', 'Post exceeds the 2000-character limit.')
+      }
+
+      const visibility = input.visibility ?? 'public'
+      if (visibility === 'group') {
+        throw new BackendError('validation_failed', 'Group visibility is planned for Phase 3.')
+      }
+
+      const { data, error } = await client()
+        .from('posts')
+        .insert({
+          author_id: session.userId,
+          body,
+          visibility,
+        })
+        .select(`
+          id,
+          author_id,
+          body,
+          visibility,
+          created_at,
+          updated_at,
+          deleted_at,
+          author:profiles!posts_author_id_fkey(handle, display_name, avatar_url),
+          post_reaction_counts(count)
+        `)
+        .single()
+
+      if (error) {
+        throw new BackendError('server_error', 'Could not share your post. Try again.')
+      }
+      return mapPost(data as Record<string, unknown>, [], {})
+    },
+
+    async delete(postId) {
+      const session = await supabaseAdapter.auth.getSession()
+      if (!session) throw new BackendError('auth_required', 'Sign in to delete posts.')
+
+      // Soft-delete per §6.3; update deleted_at
+      const { error } = await client()
+        .from('posts')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', postId)
+
+      if (error) {
+        // Fallback to hard-delete if soft-delete encounters policy restriction
+        const { error: delErr } = await client().from('posts').delete().eq('id', postId)
+        if (delErr) {
+          throw new BackendError('server_error', 'Could not delete post. Try again in a moment.')
+        }
+      }
+    },
+
+    async toggleReaction(postId, reactionType) {
+      const session = await supabaseAdapter.auth.getSession()
+      if (!session) throw new BackendError('auth_required', 'Sign in to react.')
+
+      const { data: existing, error: checkErr } = await client()
+        .from('reactions')
+        .select('type')
+        .eq('user_id', session.userId)
+        .eq('reactable_type', 'post')
+        .eq('reactable_id', postId)
+        .eq('type', reactionType)
+        .maybeSingle()
+
+      if (checkErr) {
+        throw new BackendError('server_error', 'Could not check reaction.')
+      }
+
+      if (existing) {
+        const { error } = await client()
+          .from('reactions')
+          .delete()
+          .eq('user_id', session.userId)
+          .eq('reactable_type', 'post')
+          .eq('reactable_id', postId)
+          .eq('type', reactionType)
+        if (error) throw new BackendError('server_error', 'Could not remove reaction.')
+        return { reacted: false }
+      } else {
+        const { error } = await client()
+          .from('reactions')
+          .insert({
+            user_id: session.userId,
+            reactable_type: 'post',
+            reactable_id: postId,
+            type: reactionType,
+          })
+        if (error) throw new BackendError('server_error', 'Could not add reaction.')
+        return { reacted: true }
+      }
+    },
+
+    async getReactionTypes(): Promise<ReactionType[]> {
+      const { data, error } = await client()
+        .from('reaction_types')
+        .select('*')
+        .eq('active', true)
+        .order('sort', { ascending: true })
+
+      if (error) {
+        throw new BackendError('server_error', 'Could not load reaction types.')
+      }
+      return (data ?? []).map((row) => ({
+        key: String(row.key),
+        label: String(row.label),
+        glyph: String(row.glyph),
+        sort: Number(row.sort),
+      }))
+    },
+  },
+}
+
+function mapPost(
+  row: Record<string, unknown>,
+  userReactions: string[] = [],
+  breakdown: Record<string, number> = {}
+): Post {
+  const authorData = (row.author as Record<string, unknown> | null) ?? {}
+  const rawCounts = row.post_reaction_counts as { count: number } | Array<{ count: number }> | null
+  const countVal = Array.isArray(rawCounts) ? rawCounts[0]?.count : rawCounts?.count
+  return {
+    id: String(row.id),
+    authorId: String(row.author_id),
+    author: {
+      handle: String(authorData.handle ?? 'someone'),
+      displayName: String(authorData.display_name ?? authorData.handle ?? 'Someone'),
+      avatarUrl: (authorData.avatar_url as string | null) ?? null,
+    },
+    body: String(row.body),
+    visibility: (row.visibility as Visibility) ?? 'public',
+    mediaUrls: [],
+    createdAt: String(row.created_at),
+    editedAt: (row.updated_at as string | null) ?? null,
+    deletedAt: (row.deleted_at as string | null) ?? null,
+    reactionCount: Number(countVal ?? 0),
+    commentCount: 0,
+    myReactions: userReactions,
+    reactionBreakdown: breakdown,
+  }
+}
+
+async function enrichPosts(rows: Record<string, unknown>[]): Promise<Post[]> {
+  if (rows.length === 0) return []
+  const postIds = rows.map((r) => String(r.id))
+
+  const session = await supabaseAdapter.auth.getSession()
+
+  const [userReactionsRes, allReactionsRes] = await Promise.all([
+    session
+      ? client()
+          .from('reactions')
+          .select('reactable_id, type')
+          .eq('reactable_type', 'post')
+          .eq('user_id', session.userId)
+          .in('reactable_id', postIds)
+      : Promise.resolve({ data: null, error: null }),
+    client()
+      .from('reactions')
+      .select('reactable_id, type')
+      .eq('reactable_type', 'post')
+      .in('reactable_id', postIds),
+  ])
+
+  const userReactionsMap = new Map<string, string[]>()
+  if (userReactionsRes.data) {
+    for (const r of userReactionsRes.data as Array<{ reactable_id: string; type: string }>) {
+      const pid = String(r.reactable_id)
+      const list = userReactionsMap.get(pid) ?? []
+      list.push(String(r.type))
+      userReactionsMap.set(pid, list)
+    }
+  }
+
+  const breakdownMap = new Map<string, Record<string, number>>()
+  if (allReactionsRes.data) {
+    for (const r of allReactionsRes.data as Array<{ reactable_id: string; type: string }>) {
+      const pid = String(r.reactable_id)
+      const counts = breakdownMap.get(pid) ?? {}
+      const type = String(r.type)
+      counts[type] = (counts[type] ?? 0) + 1
+      breakdownMap.set(pid, counts)
+    }
+  }
+
+  return rows.map((row) =>
+    mapPost(
+      row,
+      userReactionsMap.get(String(row.id)) ?? [],
+      breakdownMap.get(String(row.id)) ?? {}
+    )
+  )
 }
 
 /** HEAD count query against `table` filtered by `matchColumn = value`. */

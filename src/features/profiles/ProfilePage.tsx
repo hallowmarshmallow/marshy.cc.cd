@@ -6,7 +6,8 @@ import { GlassCard } from '../../components/ui/GlassCard'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { useToast } from '../../components/ui/Toast'
 import { Link, navigate } from '../../app/router'
-import type { FollowCounts, Profile } from '../../types/domain'
+import { PostCard } from '../feed/PostCard'
+import type { FollowCounts, Post, Profile, ReactionType } from '../../types/domain'
 
 interface LoadedProfile {
   profile: Profile
@@ -27,6 +28,8 @@ export function ProfilePage({ handle }: { handle: string }) {
   const showToast = useToast()
 
   const [loaded, setLoaded] = useState<LoadedProfile | null>(null)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [reactionTypes, setReactionTypes] = useState<ReactionType[]>([])
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<'follow' | 'unfollow' | null>(null)
@@ -41,17 +44,25 @@ export function ProfilePage({ handle }: { handle: string }) {
         setNotFound(true)
         return
       }
-      const counts = await backend.social.getFollowCounts(profile.id)
       const viewerId = session?.userId
       const isOwn = viewerId === profile.id
-      const [isFollowing, followsViewer] =
+
+      const [counts, authorPosts, fetchedTypes, followStates] = await Promise.all([
+        backend.social.getFollowCounts(profile.id),
+        backend.posts.listByAuthor(profile.id).catch(() => []),
+        backend.posts.getReactionTypes().catch(() => []),
         viewerId && !isOwn
-          ? await Promise.all([
+          ? Promise.all([
               backend.social.isFollowing(viewerId, profile.id),
               backend.social.isFollowing(profile.id, viewerId),
             ])
-          : [false, false]
+          : Promise.resolve([false, false] as [boolean, boolean]),
+      ])
+
+      const [isFollowing, followsViewer] = followStates
       setLoaded({ profile, counts, isFollowing, followsViewer })
+      setPosts(authorPosts)
+      setReactionTypes(fetchedTypes)
     } catch (err) {
       setError(err instanceof BackendError ? err.message : 'Could not load this profile. Retry in a moment.')
     }
@@ -91,6 +102,62 @@ export function ProfilePage({ handle }: { handle: string }) {
       void load() // resync the true server state
     } finally {
       setPendingAction(null)
+    }
+  }
+
+  async function handleDeletePost(postId: string) {
+    const postToDelete = posts.find((p) => p.id === postId)
+    if (!postToDelete) return
+
+    setPosts((prev) => prev.filter((p) => p.id !== postId))
+    try {
+      await backend.posts.delete(postId)
+      showToast('success', 'Ripple dissolved.')
+    } catch (err) {
+      setPosts((prev) => [postToDelete, ...prev])
+      showToast('error', isBackendError(err) ? err.message : 'Could not delete post.')
+    }
+  }
+
+  async function handleToggleReaction(postId: string, reactionType: string) {
+    const originalPost = posts.find((p) => p.id === postId)
+    if (!originalPost) return
+
+    const myReactions = originalPost.myReactions ?? []
+    const wasReacted = myReactions.includes(reactionType)
+    const nextMyReactions = wasReacted
+      ? myReactions.filter((r) => r !== reactionType)
+      : [...myReactions, reactionType]
+
+    const breakdown = { ...(originalPost.reactionBreakdown ?? {}) }
+    const currentTypeCount = breakdown[reactionType] ?? 0
+    if (wasReacted) {
+      if (currentTypeCount <= 1) delete breakdown[reactionType]
+      else breakdown[reactionType] = currentTypeCount - 1
+    } else {
+      breakdown[reactionType] = currentTypeCount + 1
+    }
+
+    const nextReactionCount = Math.max(0, originalPost.reactionCount + (wasReacted ? -1 : 1))
+
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              myReactions: nextMyReactions,
+              reactionBreakdown: breakdown,
+              reactionCount: nextReactionCount,
+            }
+          : p
+      )
+    )
+
+    try {
+      await backend.posts.toggleReaction(postId, reactionType)
+    } catch (err) {
+      setPosts((prev) => prev.map((p) => (p.id === postId ? originalPost : p)))
+      showToast('error', isBackendError(err) ? err.message : 'Could not update reaction.')
     }
   }
 
@@ -225,6 +292,32 @@ export function ProfilePage({ handle }: { handle: string }) {
             </p>
           ) : null}
         </GlassCard>
+
+        <section className="profile-posts-section" aria-label={`Ripples by @${profile.handle}`}>
+          <h2 className="profile-posts-title">
+            <i className="fa-solid fa-feather-pointed" aria-hidden="true" /> Ripples
+          </h2>
+          {posts.length === 0 ? (
+            <EmptyState
+              icon={<i className="fa-solid fa-water" aria-hidden="true" />}
+              title="Still waters."
+              hint={`@${profile.handle} hasn't released any ripples yet.`}
+            />
+          ) : (
+            <div className="profile-posts-list" role="feed" aria-label="Member posts">
+              {posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  reactionTypes={reactionTypes}
+                  currentUserId={session?.userId}
+                  onToggleReaction={handleToggleReaction}
+                  onDelete={own ? handleDeletePost : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </ProfileShell>
   )
