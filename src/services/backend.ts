@@ -1,13 +1,14 @@
 /**
- * BackendAdapter — the ONLY seam between features and any provider (§3.1/§4.1).
- * Features import this interface, never Supabase/Firebase/whatever directly.
- * Swapping providers touches src/services only.
+ * BackendAdapter: the only seam between features and a provider.
+ * Features import this interface and never touch a provider SDK directly,
+ * so swapping providers only changes src/services.
  */
 import type {
   AuthProvider,
   FollowCounts,
   Post,
   Profile,
+  ProjectEntry,
   ReactionType,
   SessionInfo,
   Visibility,
@@ -60,9 +61,9 @@ export interface ProfileAdapter {
 }
 
 /**
- * Social graph (§7.4): one-way follows in Phase 1/2; mutual friendships
- * arrive as a separate table in a later phase. Server-side RLS enforces
- * that follow edges can only be created/deleted by their owner.
+ * Social graph: one-way follows for now; mutual friendships arrive as a
+ * separate table later. Server-side RLS enforces that follow edges can only
+ * be created or deleted by their owner.
  */
 export interface SocialAdapter {
   /** Followers + following counts for one member profile. */
@@ -76,9 +77,8 @@ export interface SocialAdapter {
 }
 
 /**
- * Posts & Feed (§17, Phase 2):
- * Reverse-chronological feed respecting RLS (public posts, followed friends, own posts).
- * Registry-driven reactions (§7.5) with atomic trigger-maintained counts.
+ * Posts and feed: reverse-chronological, respecting RLS. Reactions are
+ * registry-driven, with counts maintained atomically by a trigger.
  */
 export interface PostsAdapter {
   /** List feed posts in reverse chronological order. */
@@ -98,12 +98,51 @@ export interface PostsAdapter {
   getReactionTypes(): Promise<ReactionType[]>;
 }
 
+export interface ProjectInput {
+  title: string;
+  description?: string;
+  /** Repository as "owner/name" on GitHub. */
+  repo?: string;
+  imageUrl?: string | null;
+  sort?: number;
+  published?: boolean;
+}
+
+/**
+ * Portfolio projects. Reads are public for published rows; every write is
+ * restricted to the owner by RLS.
+ */
+export interface ProjectsAdapter {
+  /** Published projects for the landing page, in display order. */
+  listPublished(): Promise<ProjectEntry[]>;
+  /** Every project, including unpublished drafts. Owner only. */
+  listAll(): Promise<ProjectEntry[]>;
+  create(input: ProjectInput): Promise<ProjectEntry>;
+  update(id: string, patch: Partial<ProjectInput>): Promise<ProjectEntry>;
+  remove(id: string): Promise<void>;
+}
+
+/** Role checks. RLS remains the authority; this only drives the UI. */
+export interface RolesAdapter {
+  /** Whether the signed-in user holds the owner role. */
+  isOwner(): Promise<boolean>;
+}
+
+/** Image storage for owner-managed content. RLS restricts uploads to the owner. */
+export interface StorageAdapter {
+  /** Uploads an image and resolves to its public URL. */
+  uploadImage(file: File): Promise<string>;
+}
+
 export interface BackendAdapter {
   readonly name: string;
   readonly auth: AuthAdapter;
   readonly profiles: ProfileAdapter;
   readonly social: SocialAdapter;
   readonly posts: PostsAdapter;
+  readonly projects: ProjectsAdapter;
+  readonly roles: RolesAdapter;
+  readonly storage: StorageAdapter;
 }
 
 /** Thrown (as BackendError) by the placeholder adapter until a provider is configured. */

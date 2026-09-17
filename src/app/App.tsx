@@ -2,15 +2,17 @@ import { useEffect } from "react";
 import { useRoute, matchRoute, navigate } from "./router";
 import { useSession } from "../hooks/useSession";
 import { PortfolioPage } from "../features/portfolio/PortfolioPage";
+import { BlogPage } from "../features/blog/BlogPage";
 import { LoginPage } from "../features/auth/LoginPage";
 import { FeedPage } from "../features/feed/FeedPage";
 import { ProfilePage } from "../features/profiles/ProfilePage";
 import { SettingsPage } from "../features/settings/SettingsPage";
+import { AdminPage } from "../features/admin/AdminPage";
 import { NotFoundPage } from "./NotFoundPage";
 
 /**
- * Routing + shells: logged-out visitors get the private-beta porch;
- * authenticated users land in the member shell, never back through the porch.
+ * Routing and shells: signed-out visitors see the public landing page,
+ * signed-in users see the feed, and app routes redirect to sign-in.
  */
 export function App() {
   const path = useRoute();
@@ -27,7 +29,10 @@ export function App() {
     if (
       !loading &&
       !session &&
-      (path === "/feed" || path === "/settings" || path.startsWith("/u/"))
+      (path === "/feed" ||
+        path === "/settings" ||
+        path === "/admin" ||
+        path.startsWith("/u/"))
     )
       navigate("/login");
   }, [loading, session, path]);
@@ -35,7 +40,7 @@ export function App() {
   if (loading && path !== "/" && path !== "/login") {
     return (
       <div className="boot-screen" role="status" aria-live="polite">
-        <p>Wading into the marsh…</p>
+        <p>Loading…</p>
       </div>
     );
   }
@@ -46,7 +51,7 @@ export function App() {
       return (
         <LoginPage
           onAuthSuccess={() => navigate("/feed")}
-          reason="Member profiles are private to the marsh."
+          reason="Member profiles are private."
         />
       );
     }
@@ -56,12 +61,16 @@ export function App() {
   switch (path) {
     case "/":
       return <PortfolioPage />;
+    case "/blog":
+      return <BlogPage />;
     case "/login":
       return <LoginPage onAuthSuccess={() => navigate("/feed")} />;
     case "/feed":
       return session ? <FeedPage /> : null;
     case "/settings":
       return session ? <SettingsPage /> : null;
+    case "/admin":
+      return session ? <AdminPage /> : null;
     default:
       return <NotFoundPage />;
   }

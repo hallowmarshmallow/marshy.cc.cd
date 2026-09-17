@@ -1,6 +1,5 @@
 /**
- * Shared domain types — framework-agnostic (§3.2).
- * These mirror the Phase-1 entity subset of §6.1.
+ * Shared domain types. Framework-agnostic: no React or provider SDK imports.
  */
 
 export type Visibility = 'public' | 'friends' | 'group'
@@ -45,6 +44,18 @@ export interface Post {
 export interface FollowCounts {
   followers: number
   following: number
+}
+
+/** A portfolio project shown on the public landing page. */
+export interface ProjectEntry {
+  id: string
+  title: string
+  description: string
+  /** Repository as "owner/name" on GitHub. Empty when there is none. */
+  repo: string
+  imageUrl: string | null
+  sort: number
+  published: boolean
 }
 
 export type AuthProvider = 'google' | 'discord' | 'github' | 'email'

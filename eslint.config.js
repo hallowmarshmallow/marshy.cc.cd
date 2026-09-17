@@ -20,7 +20,7 @@ export default tseslint.config(
             {
               group: ['@supabase/*', '@firebase/*', 'firebase'],
               message:
-                'Provider SDKs are only allowed inside src/services (BackendAdapter boundary, §3.1).',
+                'Provider SDKs are only allowed inside src/services (BackendAdapter boundary).',
             },
           ],
         },

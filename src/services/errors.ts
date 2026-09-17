@@ -1,7 +1,7 @@
 /**
- * Uniform error envelope (§3.3). Every adapter maps provider errors into
- * BackendError; UI renders `message` (human-readable) and honors `retryable`.
- * Internal detail (requestId etc.) is logged, never shown raw to users.
+ * Uniform error envelope. Every adapter maps provider errors into BackendError;
+ * the UI renders `message` and honors `retryable`. Internal detail such as
+ * requestId is logged, never shown to users.
  */
 
 export const ERROR_CODES = [
@@ -59,7 +59,7 @@ export function isBackendError(e: unknown): e is BackendError {
 export function toBackendError(e: unknown): BackendError {
   if (isBackendError(e)) return e
   // Unknown provider failure: log full detail, surface generic message.
-  // Not marked retryable — an unclassified failure must not trigger auto-retry loops.
+  // Not retryable: an unclassified failure must not trigger an auto-retry loop.
   console.error('[backend] unhandled provider error:', e)
   return new BackendError('server_error', 'Something went wrong. Please try again.', { retryable: false })
 }

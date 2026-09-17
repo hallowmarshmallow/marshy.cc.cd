@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "../../app/router";
-import { GlassCard } from "../../components/ui/GlassCard";
+import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import type { Post, ReactionType } from "../../types/domain";
 
@@ -50,7 +50,7 @@ export function PostCard({
   }
 
   return (
-    <GlassCard className="post-card">
+    <Card className="post-card">
       <header className="post-header">
         <Link to={`/u/${post.author.handle}`} className="post-avatar-link">
           {post.author.avatarUrl ? (
@@ -78,7 +78,7 @@ export function PostCard({
             {post.visibility !== "public" ? (
               <span
                 className="post-visibility-badge"
-                title="Visible to marsh members"
+                title="Visible to members"
               >
                 <i className="fa-solid fa-lock" aria-hidden="true" /> members
               </span>
@@ -166,7 +166,7 @@ export function PostCard({
           })}
         </div>
       </footer>
-    </GlassCard>
+    </Card>
   );
 }
 
@@ -174,7 +174,7 @@ function formatTimeAgo(isoString: string): string {
   const date = new Date(isoString);
   const now = Date.now();
   const diffMs = now - date.getTime();
-  if (Number.isNaN(diffMs)) return "the mists";
+  if (Number.isNaN(diffMs)) return "unknown";
 
   const diffSec = Math.floor(diffMs / 1000);
   if (diffSec < 45) return "just now";

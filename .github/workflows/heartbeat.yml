@@ -1,7 +1,7 @@
 name: Supabase heartbeat
 on:
   schedule:
-    # Twice weekly (Mon + Thu) — leaves margin under Supabase's ~7-day
+    # Twice weekly (Mon + Thu), leaving margin under Supabase's ~7-day
     # auto-pause window for free projects if a run ever fails silently.
     - cron: '0 12 * * 1,4'
   workflow_dispatch:
@@ -31,5 +31,5 @@ jobs:
             -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
 
           echo "Profiles query: HTTP $code"
-          test "$code" = "200" || { echo "::error::Database did not answer (HTTP $code) — check the project isn't paused or the keys are stale."; exit 1; }
+          test "$code" = "200" || { echo "::error::Database did not answer (HTTP $code). Check the project is not paused and the keys are current."; exit 1; }
           echo "Database awake ✓ (pause clock reset)"

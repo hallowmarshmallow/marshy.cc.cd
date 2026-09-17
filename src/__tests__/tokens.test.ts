@@ -24,13 +24,13 @@ describe('design tokens', () => {
     }
   })
 
-  it('motion durations stay within the 120–250ms band (§1.6)', () => {
+  it('motion durations stay within the 120-250ms band', () => {
     expect(motionTokens.durationFast).toBeGreaterThanOrEqual(120)
     expect(motionTokens.durationSlow).toBeLessThanOrEqual(250)
     expect(spacingScale.length).toBeGreaterThan(0)
   })
 
-  it('error code taxonomy is closed and matches §3.3', () => {
+  it('error code taxonomy is closed', () => {
     expect(ERROR_CODES).toEqual([
       'auth_required',
       'auth_invalid',

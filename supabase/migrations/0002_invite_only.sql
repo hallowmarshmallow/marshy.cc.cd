@@ -1,5 +1,5 @@
 -- ============================================================
--- HALLOWMARSH — Invite-only beta
+-- HALLOWMARSH: invite-only beta
 -- New accounts need a one-time invite code. Existing accounts remain valid.
 -- Seed codes manually as the owner, for example:
 --   insert into public.invite_codes (code, uses_remaining) values ('MARSH-ABCD', 1);
@@ -9,17 +9,23 @@ create table if not exists public.invite_codes (
   code           text primary key check (code = upper(trim(code)) and char_length(code) between 6 and 64),
   uses_remaining integer not null default 1 check (uses_remaining >= 0),
   created_at     timestamptz not null default now(),
-  used_at       timestamptz
+  used_at        timestamptz
 );
 
 alter table public.invite_codes enable row level security;
 
 -- No client-facing read/write policy: the signup trigger is the only path.
 
+-- Replaces the function of the same name from 0001.
+-- Reads the invite code from signup metadata, consumes one use, then creates
+-- the profile. The handle the user chose is used when it is valid and free;
+-- otherwise we fall back to something derived from the email and user id.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 declare
-  requested_code text := upper(trim(coalesce(new.raw_user_meta_data->>'invite_code', '')));
+  requested_code   text := upper(trim(coalesce(new.raw_user_meta_data->>'invite_code', '')));
+  requested_handle citext := nullif(lower(trim(coalesce(new.raw_user_meta_data->>'handle', ''))), '');
+  candidate        citext;
 begin
   update public.invite_codes
   set uses_remaining = uses_remaining - 1, used_at = coalesce(used_at, now())
@@ -29,11 +35,23 @@ begin
     raise exception 'invite_required';
   end if;
 
+  if requested_handle is not null
+     and requested_handle ~ '^[a-z0-9_]{3,24}$'
+     and not exists (select 1 from public.profiles where handle = requested_handle) then
+    candidate := requested_handle;
+  else
+    candidate := left(coalesce(requested_handle, split_part(new.email, '@', 1)), 17)
+                 || '_' || left(new.id::text, 4);
+    if candidate !~ '^[a-z0-9_]{3,24}$'
+       or exists (select 1 from public.profiles where handle = candidate) then
+      candidate := 'member_' || left(new.id::text, 8);
+    end if;
+  end if;
+
   insert into public.profiles (user_id, handle, display_name)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'handle', split_part(new.email, '@', 1))
-      || '_' || left(new.id::text, 4),
+    candidate,
     coalesce(new.raw_user_meta_data->>'display_name', 'newcomer')
   );
 

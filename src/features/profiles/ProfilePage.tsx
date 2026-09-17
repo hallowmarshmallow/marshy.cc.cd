@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useSession } from '../../hooks/useSession'
 import { backend, BackendError, isBackendError } from '../../services'
 import { Button } from '../../components/ui/Button'
-import { GlassCard } from '../../components/ui/GlassCard'
+import { Card } from '../../components/ui/Card'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { useToast } from '../../components/ui/Toast'
 import { Link, navigate } from '../../app/router'
@@ -19,9 +19,9 @@ interface LoadedProfile {
 }
 
 /**
- * Member profile (§7.2): private page for any handle, with follow/unfollow
- * (§7.4, one-way in this phase) for signed-in members. Server-side RLS is
- * authoritative — the follow button just drives it.
+ * Member profile: private page for any handle, with follow/unfollow for
+ * signed-in members. Server-side RLS is authoritative; the follow button
+ * only drives it.
  */
 export function ProfilePage({ handle }: { handle: string }) {
   const { session } = useSession()
@@ -64,7 +64,7 @@ export function ProfilePage({ handle }: { handle: string }) {
       setPosts(authorPosts)
       setReactionTypes(fetchedTypes)
     } catch (err) {
-      setError(err instanceof BackendError ? err.message : 'Could not load this profile. Retry in a moment.')
+      setError(err instanceof BackendError ? err.message : 'Could not load this profile. Try again.')
     }
   }, [handle, session?.userId])
 
@@ -98,7 +98,7 @@ export function ProfilePage({ handle }: { handle: string }) {
       }
     } catch (err) {
       if (isBackendError(err)) showToast('error', err.message)
-      else showToast('error', 'That did not go through — try again.')
+      else showToast('error', "That didn't work. Try again.")
       void load() // resync the true server state
     } finally {
       setPendingAction(null)
@@ -112,7 +112,7 @@ export function ProfilePage({ handle }: { handle: string }) {
     setPosts((prev) => prev.filter((p) => p.id !== postId))
     try {
       await backend.posts.delete(postId)
-      showToast('success', 'Ripple dissolved.')
+      showToast('success', 'Post deleted.')
     } catch (err) {
       setPosts((prev) => [postToDelete, ...prev])
       showToast('error', isBackendError(err) ? err.message : 'Could not delete post.')
@@ -169,14 +169,14 @@ export function ProfilePage({ handle }: { handle: string }) {
   if (error) {
     return (
       <ProfileShell onSignOut={onSignOut} signedIn={session !== null}>
-        <GlassCard className="profile-error">
+        <Card className="profile-error">
           <p className="form-error" role="alert">
             {error}
           </p>
           <Button variant="primary" onClick={() => void load()}>
             <i className="fa-solid fa-rotate" aria-hidden="true" /> Retry
           </Button>
-        </GlassCard>
+        </Card>
       </ProfileShell>
     )
   }
@@ -186,10 +186,11 @@ export function ProfilePage({ handle }: { handle: string }) {
       <ProfileShell onSignOut={onSignOut} signedIn={session !== null}>
         <EmptyState
           icon={<i className="fa-solid fa-magnifying-glass" aria-hidden="true" />}
-          title="No one by that name in the marsh."
+          title="No member with that handle."
           hint={
             <>
-              @{handle} does not exist or left. <Link to={session ? '/feed' : '/'}>Head back.</Link>
+              @{handle} does not exist or has left.{' '}
+              <Link to={session ? '/feed' : '/'}>Go back.</Link>
             </>
           }
         />
@@ -201,7 +202,7 @@ export function ProfilePage({ handle }: { handle: string }) {
     return (
       <ProfileShell onSignOut={onSignOut} signedIn={session !== null}>
         <div className="boot-screen" role="status" aria-live="polite">
-          <p>Wading through the reeds…</p>
+          <p>Loading profile…</p>
         </div>
       </ProfileShell>
     )
@@ -214,94 +215,83 @@ export function ProfilePage({ handle }: { handle: string }) {
   return (
     <ProfileShell onSignOut={onSignOut} signedIn={session !== null}>
       <div className="profile-wrap">
-        <GlassCard className="profile-hero">
-          <div className="profile-identity">
-            {profile.avatarUrl ? (
-              <img className="profile-avatar" src={profile.avatarUrl} alt="" />
-            ) : (
-              <div className="profile-avatar profile-avatar-fallback" aria-hidden="true">
-                {initials}
+        <Card className="profile-hero">
+          <div className="profile-banner">
+            {profile.bannerUrl ? <img src={profile.bannerUrl} alt="" /> : null}
+          </div>
+          <div className="profile-hero-body">
+            <div className="profile-identity">
+              {profile.avatarUrl ? (
+                <img className="profile-avatar" src={profile.avatarUrl} alt="" />
+              ) : (
+                <div className="profile-avatar profile-avatar-fallback" aria-hidden="true">
+                  {initials}
+                </div>
+              )}
+              <div className="profile-titles">
+                <h1 className="profile-name">
+                  {profile.displayName}
+                  {own ? <span className="profile-badge">you</span> : null}
+                </h1>
+                <p className="profile-handle">@{profile.handle}</p>
+                {profile.customStatus ? (
+                  <p className="profile-status">{profile.customStatus}</p>
+                ) : null}
               </div>
-            )}
-            <div className="profile-titles">
-              <h1 className="profile-name">
-                {profile.displayName}
-                {own ? <span className="profile-badge">you</span> : null}
-              </h1>
-              <p className="profile-handle">@{profile.handle}</p>
-              {profile.customStatus ? (
-                <p className="profile-status">
-                  <i className="fa-solid fa-feather-pointed" aria-hidden="true" /> {profile.customStatus}
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          {profile.bio ? <p className="profile-bio">{profile.bio}</p> : null}
-
-          <div className="profile-meta">
-            <span title="Presence">
-              <i className="fa-solid fa-circle profile-online" aria-hidden="true" /> online
-            </span>
-            <span title="Joined">
-              <i className="fa-solid fa-water" aria-hidden="true" /> Waded in {joined}
-            </span>
-          </div>
-
-          <div className="profile-actions">
-            <div className="profile-stats" role="group" aria-label="Follow counts">
-              <span className="profile-stat">
-                <strong>{counts.followers}</strong> followers
-              </span>
-              <span className="profile-stat">
-                <strong>{counts.following}</strong> following
-              </span>
             </div>
 
-            {own ? (
-              <Button variant="ghost" onClick={() => navigate('/settings')}>
-                <i className="fa-solid fa-user-pen" aria-hidden="true" /> Edit profile
-              </Button>
-            ) : session === null ? (
-              <Link className="btn btn-ghost" to="/login">
-                <i className="fa-solid fa-right-to-bracket" aria-hidden="true" /> Sign in to follow
-              </Link>
-            ) : (
-              <Button
-                variant={loaded.isFollowing ? 'ghost' : 'primary'}
-                loading={pendingAction !== null}
-                onClick={() => void onToggleFollow()}
-                title={loaded.isFollowing ? `Unfollow @${profile.handle}` : `Follow @${profile.handle}`}
-                aria-pressed={loaded.isFollowing}
-              >
-                {loaded.isFollowing ? (
-                  <>
-                    <i className="fa-solid fa-check" aria-hidden="true" /> Following
-                  </>
-                ) : (
-                  <>
-                    <i className="fa-solid fa-plus" aria-hidden="true" /> Follow
-                  </>
-                )}
-              </Button>
-            )}
-          </div>
-          {!own && loaded.followsViewer ? (
-            <p className="profile-follows-you">
-              <i className="fa-solid fa-wave-square" aria-hidden="true" /> @{profile.handle} follows you
-            </p>
-          ) : null}
-        </GlassCard>
+            {profile.bio ? <p className="profile-bio">{profile.bio}</p> : null}
 
-        <section className="profile-posts-section" aria-label={`Ripples by @${profile.handle}`}>
-          <h2 className="profile-posts-title">
-            <i className="fa-solid fa-feather-pointed" aria-hidden="true" /> Ripples
-          </h2>
+            <div className="profile-meta">
+              <span title="Presence">
+                <i className="fa-solid fa-circle profile-online" aria-hidden="true" /> online
+              </span>
+              <span title="Joined">Joined {joined}</span>
+            </div>
+
+            <div className="profile-actions">
+              <div className="profile-stats" role="group" aria-label="Follow counts">
+                <span className="profile-stat">
+                  <strong>{counts.followers}</strong> followers
+                </span>
+                <span className="profile-stat">
+                  <strong>{counts.following}</strong> following
+                </span>
+              </div>
+
+              {own ? (
+                <Button variant="ghost" onClick={() => navigate('/settings')}>
+                  Edit profile
+                </Button>
+              ) : session === null ? (
+                <Link className="btn btn-ghost" to="/login">
+                  Sign in to follow
+                </Link>
+              ) : (
+                <Button
+                  variant={loaded.isFollowing ? 'ghost' : 'primary'}
+                  loading={pendingAction !== null}
+                  onClick={() => void onToggleFollow()}
+                  title={loaded.isFollowing ? `Unfollow @${profile.handle}` : `Follow @${profile.handle}`}
+                  aria-pressed={loaded.isFollowing}
+                >
+                  {loaded.isFollowing ? 'Following' : 'Follow'}
+                </Button>
+              )}
+            </div>
+            {!own && loaded.followsViewer ? (
+              <p className="profile-follows-you">@{profile.handle} follows you</p>
+            ) : null}
+          </div>
+        </Card>
+
+        <section className="profile-posts-section" aria-label={`Posts by @${profile.handle}`}>
+          <h2 className="profile-posts-title">Posts</h2>
           {posts.length === 0 ? (
             <EmptyState
-              icon={<i className="fa-solid fa-water" aria-hidden="true" />}
-              title="Still waters."
-              hint={`@${profile.handle} hasn't released any ripples yet.`}
+              icon={<i className="fa-solid fa-inbox" aria-hidden="true" />}
+              title="No posts yet."
+              hint={`@${profile.handle} hasn't posted anything.`}
             />
           ) : (
             <div className="profile-posts-list" role="feed" aria-label="Member posts">
@@ -334,9 +324,9 @@ function ProfileShell({
 }) {
   return (
     <div className="app-shell">
-      <nav className="app-nav glass" aria-label="Primary">
+      <nav className="app-nav" aria-label="Primary">
         <Link className="app-brand" to={signedIn ? '/feed' : '/'}>
-          <i className="fa-solid fa-ghost app-brand-icon" aria-hidden="true" /> Hallowmarsh
+          Hallowmarsh
         </Link>
         <div className="app-nav-actions">
           <Link className="btn btn-ghost" to="/feed">
@@ -356,6 +346,6 @@ function ProfileShell({
 
 function formatJoined(iso: string): string {
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return 'the mists'
+  if (Number.isNaN(d.getTime())) return 'unknown'
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long' })
 }

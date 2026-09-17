@@ -2,8 +2,8 @@ import { BackendError } from './errors'
 import { UNCONFIGURED_MESSAGE, type BackendAdapter } from './backend'
 
 /**
- * Placeholder adapter used when no provider is configured (e.g. fresh clone).
- * Fails loudly and honestly — it never fakes success (§0.3-1).
+ * Adapter used when no provider is configured, for example on a fresh clone.
+ * It throws rather than faking success.
  */
 async function unconfigured(): Promise<never> {
   throw new BackendError('provider_error', UNCONFIGURED_MESSAGE)
@@ -37,5 +37,19 @@ export const unconfiguredAdapter: BackendAdapter = {
     delete: unconfigured,
     toggleReaction: unconfigured,
     getReactionTypes: unconfigured,
+  },
+  projects: {
+    listPublished: unconfigured,
+    listAll: unconfigured,
+    create: unconfigured,
+    update: unconfigured,
+    remove: unconfigured,
+  },
+  roles: {
+    // No session means no roles, the same way getSession resolves to null.
+    isOwner: async () => false,
+  },
+  storage: {
+    uploadImage: unconfigured,
   },
 }

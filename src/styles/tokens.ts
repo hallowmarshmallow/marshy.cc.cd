@@ -1,5 +1,5 @@
 /**
- * HALLOWMARSH DESIGN TOKENS — single source of truth.
+ * HALLOWMARSH DESIGN TOKENS. Single source of truth.
  * Rule: components never hardcode values; they consume CSS custom properties
  * mirrored in src/styles/base.css (kept in sync with this file; a codegen
  * step may replace the manual mirror later).
@@ -70,7 +70,7 @@ export const contrastPairs: readonly ContrastPair[] = [
     fg: "accentWarm",
     bg: "bg",
     min: 3,
-    label: "warm accent (fireflies/highlights) on background",
+    label: "warm accent on background",
   },
   {
     fg: "accentDim",
@@ -95,7 +95,7 @@ export const motionTokens = {
 } as const;
 
 export const spacingScale = [0, 2, 4, 8, 12, 16, 24, 32, 48, 64, 96] as const;
-export const radiusScale = { sm: 6, md: 10, lg: 16, full: 9999 } as const;
+export const radiusScale = { sm: 8, md: 14, lg: 22, full: 9999 } as const;
 export const zIndexScale = {
   base: 0,
   raised: 10,

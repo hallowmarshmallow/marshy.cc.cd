@@ -17,7 +17,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     # Secrets live under the github-pages ENVIRONMENT, so this job must
-    # declare it — environment secrets are never visible to jobs without one.
+    # declare it: environment secrets are never visible to jobs without one.
     environment: github-pages
     steps:
       - uses: actions/checkout@v4
@@ -61,7 +61,7 @@ jobs:
           # Fail loudly if Pages ever regresses to legacy/branch mode: serving
           # raw /src/main.tsx is exactly what blanked the site before.
           if echo "$html" | grep -q '/src/main.tsx'; then
-            echo "::error::Serving raw /src/main.tsx — Pages is in 'Deploy from a branch' mode. Set Source to 'GitHub Actions' in Settings → Pages."
+            echo "::error::Serving raw /src/main.tsx. Pages is in 'Deploy from a branch' mode. Set Source to 'GitHub Actions' in Settings → Pages."
             exit 1
           fi
 

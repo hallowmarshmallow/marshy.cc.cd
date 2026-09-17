@@ -1,18 +1,19 @@
 import { useEffect, useState, type ReactNode } from 'react'
 
 /**
- * Minimal hash-based router. Hash routing was chosen over history routing
- * because GitHub Pages serves static files only; the 404.html fallback hack
- * is more fragile and hosts nothing at arbitrary paths without server rules.
- * Routes are simple, stable, and Android-deep-link friendly (§15.1).
+ * Minimal hash-based router. Hash routing is used instead of history routing
+ * because GitHub Pages serves static files only; the 404.html fallback is more
+ * fragile and hosts nothing at arbitrary paths without server rules.
  */
 
 export type RoutePattern =
   | '/'
+  | '/blog'
   | '/login'
   | '/feed'
   | '/u/:handle'
   | '/settings'
+  | '/admin'
   | '*'
 
 function currentPath(): string {

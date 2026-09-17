@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "../../hooks/useSession";
 import { backend, isBackendError } from "../../services";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { GlassCard } from "../../components/ui/GlassCard";
+import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { useToast } from "../../components/ui/Toast";
 import { Link, navigate } from "../../app/router";
@@ -78,7 +78,7 @@ export function FeedPage() {
 
     try {
       await backend.posts.delete(postId);
-      showToast("success", "Ripple dissolved from the marsh.");
+      showToast("success", "Post deleted.");
     } catch (err) {
       // Rollback
       setPosts((prev) => [postToDelete, ...prev]);
@@ -150,9 +150,8 @@ export function FeedPage() {
 
   return (
     <div className="app-shell">
-      <nav className="app-nav glass" aria-label="Primary">
+      <nav className="app-nav" aria-label="Primary">
         <Link className="app-brand" to="/feed">
-          <i className="fa-solid fa-ghost app-brand-icon" aria-hidden="true" />{" "}
           Hallowmarsh
         </Link>
         <div className="app-nav-actions">
@@ -192,7 +191,7 @@ export function FeedPage() {
               <p className="feed-kicker">member feed</p>
               <h1 className="feed-title">The Marsh</h1>
               <p className="feed-subtitle">
-                A live, low-noise stream from the people inside.
+                Posts from members.
               </p>
             </div>
             <Button
@@ -217,22 +216,22 @@ export function FeedPage() {
               role="status"
               aria-live="polite"
             >
-              <p>Listening to the reeds…</p>
+              <p>Loading feed…</p>
             </div>
           ) : error ? (
-            <GlassCard className="feed-error-card">
+            <Card className="feed-error-card">
               <p className="form-error" role="alert">
                 {error}
               </p>
               <Button variant="primary" onClick={() => void loadFeed()}>
                 <i className="fa-solid fa-rotate" aria-hidden="true" /> Retry
               </Button>
-            </GlassCard>
+            </Card>
           ) : posts.length === 0 ? (
             <EmptyState
               icon={<i className="fa-solid fa-water" aria-hidden="true" />}
-              title="The waters are still."
-              hint="No ripples have reached you yet. Leave the first note for the room above."
+              title="No posts yet."
+              hint="Nothing has been posted. Write the first one above."
             />
           ) : (
             <div

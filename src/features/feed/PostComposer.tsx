@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { backend, isBackendError } from "../../services";
-import { GlassCard } from "../../components/ui/GlassCard";
+import { Card } from "../../components/ui/Card";
 import { Button } from "../../components/ui/Button";
 import { useToast } from "../../components/ui/Toast";
 import type { Post, Profile } from "../../types/domain";
@@ -54,7 +54,7 @@ export function PostComposer({
       }
 
       setBody("");
-      showToast("success", "Your ripple has stirred the marsh.");
+      showToast("success", "Posted.");
       onPostCreated(newPost);
     } catch (err) {
       const msg = isBackendError(err)
@@ -68,7 +68,7 @@ export function PostComposer({
   }
 
   return (
-    <GlassCard className="composer-card">
+    <Card className="composer-card">
       <form onSubmit={(e) => void handleSubmit(e)}>
         <div className="composer-top">
           <div className="composer-avatar-wrap">
@@ -90,7 +90,7 @@ export function PostComposer({
           <div className="composer-input-area">
             <textarea
               className="composer-textarea"
-              placeholder="What ripples through the marsh? Speak into the reeds…"
+              placeholder="Write a post…"
               value={body}
               onChange={(e) => {
                 setBody(e.target.value);
@@ -113,7 +113,7 @@ export function PostComposer({
           <div className="composer-meta">
             <span
               className="composer-visibility-label"
-              title="Posts are visible to signed-in marsh members"
+              title="Posts are visible to members"
             >
               <i className="fa-solid fa-lock" aria-hidden="true" /> Members only
             </span>
@@ -143,6 +143,6 @@ export function PostComposer({
           </Button>
         </div>
       </form>
-    </GlassCard>
+    </Card>
   );
 }

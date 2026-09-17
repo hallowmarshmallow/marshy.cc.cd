@@ -1,15 +1,15 @@
 -- ============================================================
--- HALLOWMARSH — Phase 1 schema migration (§6.1 Phase-1 subset)
+-- HALLOWMARSH: Phase 1 schema migration
 -- Apply: supabase.com dashboard → SQL Editor → paste → Run
 --        (or: supabase db push, if you use the CLI)
 -- Entities: profiles, follows, blocks, mutes, posts,
 --           reaction_types, roles/permissions/user_roles,
 --           platform_metrics, audit_log
--- Auth lives in Supabase's managed auth.users — never duplicated here.
+-- Auth lives in Supabase's managed auth.users and is never duplicated here.
 -- ============================================================
 
 -- ---------- helpers ----------
-create extension if not exists pg_trgm;      -- §7.13 search groundwork
+create extension if not exists pg_trgm;      -- trigram indexing for search
 create extension if not exists citext;       -- case-insensitive handles
 
 create or replace function public.set_updated_at()
@@ -28,7 +28,7 @@ create table public.profiles (
   bio            text check (char_length(bio) <= 500),
   avatar_url     text,
   banner_url     text,
-  custom_status  text check (char_length(custom_status) <= 140),  -- §1.4
+  custom_status  text check (char_length(custom_status) <= 140),
   presence       text not null default 'online'
                  check (presence in ('online','away','busy','invisible')),
   last_seen_at   timestamptz not null default now(),
@@ -46,15 +46,32 @@ create index profiles_handle_trgm on public.profiles using gin (handle gin_trgm_
 -- Auto-create a profile row whenever a user signs up.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  requested_handle citext := nullif(lower(trim(coalesce(new.raw_user_meta_data->>'handle', ''))), '');
+  candidate        citext;
 begin
+  -- Use the handle the user chose when it is valid and still free; otherwise
+  -- fall back to something derived from the email and user id.
+  if requested_handle is not null
+     and requested_handle ~ '^[a-z0-9_]{3,24}$'
+     and not exists (select 1 from public.profiles where handle = requested_handle) then
+    candidate := requested_handle;
+  else
+    candidate := left(coalesce(requested_handle, split_part(new.email, '@', 1)), 17)
+                 || '_' || left(new.id::text, 4);
+    if candidate !~ '^[a-z0-9_]{3,24}$'
+       or exists (select 1 from public.profiles where handle = candidate) then
+      candidate := 'member_' || left(new.id::text, 8);
+    end if;
+  end if;
+
   insert into public.profiles (user_id, handle, display_name)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'handle', split_part(new.email, '@', 1))
-      || '_' || left(new.id::text, 4),          -- uniqueness without blocking signup
+    candidate,
     coalesce(new.raw_user_meta_data->>'display_name', 'newcomer')
   );
-  -- Bootstrap: the earliest CONFIRMED account becomes Owner (§7.8).
+  -- Bootstrap: the earliest confirmed account becomes Owner.
   if exists (
     select 1 from public.profiles p
     join auth.users u on u.id = p.user_id
@@ -119,7 +136,7 @@ create trigger posts_set_updated_at
 create index posts_feed_idx on public.posts (created_at desc, id desc) where deleted_at is null;
 create index posts_author_idx on public.posts (author_id, created_at desc);
 
--- ---------- reactions (registry-driven, §7.5) ----------
+-- ---------- reactions (registry-driven) ----------
 create table public.reaction_types (
   key    text primary key,
   label  text not null,
@@ -149,7 +166,7 @@ create table public.post_reaction_counts (
   count   bigint not null default 0
 );
 
--- Denormalized counter maintained transactionally (§6.2 — never N+1 in feed)
+-- Denormalized counter maintained transactionally, so the feed never N+1s.
 create or replace function public.bump_post_reaction_count()
 returns trigger language plpgsql as $$
 begin
@@ -179,7 +196,7 @@ create trigger reactions_bump_post_count_delete
   when (old.reactable_type = 'post')
   execute function public.bump_post_reaction_count();
 
--- ---------- roles & permissions (§7.8) ----------
+-- ---------- roles & permissions ----------
 create table public.roles (
   key        text primary key,
   name       text not null,
@@ -226,8 +243,7 @@ create table public.user_roles (
   user_id    uuid not null references public.profiles(user_id) on delete cascade,
   role_key   text not null references public.roles(key) on delete cascade,
   granted_by uuid references public.profiles(user_id),
-  granted_at timestamptz not null default now(),
-  expires_at timestamptz,               -- temp mod roles (§6.1)
+  granted_at timestamptz not null default now(),  expires_at     timestamptz,               -- temporary moderator roles
   primary key (user_id, role_key)
 );
 
@@ -259,10 +275,10 @@ create table public.audit_log (
   payload     jsonb,
   created_at  timestamptz not null default now()
 );
--- audit_log is append-only: inserts only, no updates/deletes ever (§7.12)
+-- audit_log is append-only: inserts only, never updated or deleted.
 
 -- ============================================================
--- ROW LEVEL SECURITY (§6.3 — server-side authorization is law)
+-- ROW LEVEL SECURITY: server-side authorization is authoritative.
 -- ============================================================
 alter table public.profiles            enable row level security;
 alter table public.follows             enable row level security;
@@ -315,7 +331,7 @@ create policy posts_insert on public.posts for insert
 create policy posts_update on public.posts for update
   using (auth.uid() = author_id and deleted_at is null);
 
--- soft-delete own posts (moderators may hard-remove per §6.3)
+-- soft-delete own posts; moderators may hard-remove
 create policy posts_delete on public.posts for delete
   using (
     auth.uid() = author_id
@@ -335,7 +351,7 @@ create policy reactions_delete on public.reactions for delete
 
 create policy counts_read on public.post_reaction_counts for select using (true);
 
--- roles: visible to all (UI mirror is cosmetic, §7.8); manageable by owner only
+-- roles: visible to all (the UI mirror is cosmetic); manageable by owner only
 create policy roles_read    on public.roles for select using (true);
 create policy user_roles_read on public.user_roles for select using (true);
 create policy user_roles_manage on public.user_roles for all
@@ -350,7 +366,7 @@ create policy metrics_read  on public.platform_metrics for select using (public.
 create policy audit_read    on public.audit_log for select using (public.has_role(auth.uid(), 100));
 
 -- ============================================================
--- Storage bucket (avatars/banners) — run once
+-- Storage bucket (avatars/banners). Run once.
 -- ============================================================
 insert into storage.buckets (id, name, public)
 values ('media', 'media', true)

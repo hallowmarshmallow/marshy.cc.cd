@@ -4,6 +4,7 @@ import type {
   AuthProvider,
   Post,
   Profile,
+  ProjectEntry,
   ReactionType,
   SessionInfo,
   Visibility,
@@ -12,9 +13,9 @@ import { BackendError } from "./errors";
 import { UNCONFIGURED_MESSAGE, type BackendAdapter } from "./backend";
 
 /**
- * Supabase adapter — the Phase-1 default provider (§3.1 [R]).
+ * Supabase adapter, the default provider.
  * All provider access lives in src/services; features never import
- * '@supabase/supabase-js' directly (enforced by lint rule no-restricted-imports).
+ * '@supabase/supabase-js' directly (enforced by no-restricted-imports).
  */
 
 const env = import.meta.env;
@@ -25,7 +26,7 @@ export function isBackendConfigured(): boolean {
 
 function client(): SupabaseClient {
   if (!isBackendConfigured()) {
-    // Fail loudly but human-readably (§0.3-6: no silent failures).
+    // Fail loudly rather than returning a silent empty session.
     throw new BackendError("provider_error", UNCONFIGURED_MESSAGE);
   }
   return createClient(
@@ -67,6 +68,18 @@ function mapProfile(row: Record<string, unknown>): Profile {
     customStatus: (row.custom_status as string | null) ?? null,
     presence: "online",
     joinedAt: String(row.created_at),
+  };
+}
+
+function mapProject(row: Record<string, unknown>): ProjectEntry {
+  return {
+    id: String(row.id),
+    title: String(row.title),
+    description: String(row.description ?? ""),
+    repo: String(row.repo ?? ""),
+    imageUrl: (row.image_url as string | null) ?? null,
+    sort: Number(row.sort ?? 0),
+    published: Boolean(row.published ?? true),
   };
 }
 
@@ -359,7 +372,7 @@ export const supabaseAdapter: BackendAdapter = {
       if (visibility !== "friends") {
         throw new BackendError(
           "validation_failed",
-          "The marsh is private right now. Posts are member-only.",
+          "Posts are member-only.",
         );
       }
 
@@ -399,7 +412,7 @@ export const supabaseAdapter: BackendAdapter = {
       if (!session)
         throw new BackendError("auth_required", "Sign in to delete posts.");
 
-      // Soft-delete per §6.3; update deleted_at
+      // Soft-delete by setting deleted_at.
       const { error } = await client()
         .from("posts")
         .update({ deleted_at: new Date().toISOString() })
@@ -481,6 +494,186 @@ export const supabaseAdapter: BackendAdapter = {
         glyph: String(row.glyph),
         sort: Number(row.sort),
       }));
+    },
+  },
+
+  projects: {
+    async listPublished() {
+      const { data, error } = await client()
+        .from("projects")
+        .select("*")
+        .eq("published", true)
+        .order("sort", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        throw new BackendError("server_error", "Could not load projects.");
+      }
+      return (data ?? []).map(mapProject);
+    },
+
+    async listAll() {
+      const { data, error } = await client()
+        .from("projects")
+        .select("*")
+        .order("sort", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      if (error) {
+        throw new BackendError("forbidden", "Could not load projects.");
+      }
+      return (data ?? []).map(mapProject);
+    },
+
+    async create(input) {
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError("auth_required", "Sign in to manage projects.");
+
+      const title = input.title.trim();
+      if (title.length === 0) {
+        throw new BackendError("validation_failed", "A project needs a title.");
+      }
+
+      const { data, error } = await client()
+        .from("projects")
+        .insert({
+          title,
+          description: input.description?.trim() ?? "",
+          repo: input.repo?.trim() ?? "",
+          image_url: input.imageUrl?.trim() || null,
+          sort: input.sort ?? 0,
+          published: input.published ?? true,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw new BackendError(
+          "forbidden",
+          "Could not create the project. Only the owner can.",
+        );
+      }
+      return mapProject(data);
+    },
+
+    async update(id, patch) {
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError("auth_required", "Sign in to manage projects.");
+
+      const dbPatch: Record<string, unknown> = {};
+      if (patch.title !== undefined) dbPatch.title = patch.title.trim();
+      if (patch.description !== undefined)
+        dbPatch.description = patch.description.trim();
+      if (patch.repo !== undefined) dbPatch.repo = patch.repo.trim();
+      if (patch.imageUrl !== undefined)
+        dbPatch.image_url = patch.imageUrl?.trim() || null;
+      if (patch.sort !== undefined) dbPatch.sort = patch.sort;
+      if (patch.published !== undefined) dbPatch.published = patch.published;
+
+      const { data, error } = await client()
+        .from("projects")
+        .update(dbPatch)
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) {
+        throw new BackendError(
+          "forbidden",
+          "Could not save the project. Only the owner can.",
+        );
+      }
+      return mapProject(data);
+    },
+
+    async remove(id) {
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError("auth_required", "Sign in to manage projects.");
+
+      const { error } = await client().from("projects").delete().eq("id", id);
+      if (error) {
+        throw new BackendError(
+          "forbidden",
+          "Could not delete the project. Only the owner can.",
+        );
+      }
+    },
+  },
+
+  roles: {
+    async isOwner() {
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session) return false;
+
+      const { data, error } = await client()
+        .from("user_roles")
+        .select("role_key, expires_at, roles(rank)")
+        .eq("user_id", session.userId);
+
+      if (error) {
+        throw new BackendError(
+          "server_error",
+          "Could not check your permissions.",
+        );
+      }
+
+      return (data ?? []).some((row: Record<string, unknown>) => {
+        const embedded = row.roles as
+          | { rank?: number }
+          | Array<{ rank?: number }>
+          | null;
+        const rank = Array.isArray(embedded)
+          ? embedded[0]?.rank
+          : embedded?.rank;
+        const expiresAt = row.expires_at as string | null;
+        const active =
+          !expiresAt || new Date(expiresAt).getTime() > Date.now();
+        return active && Number(rank ?? 0) >= 100;
+      });
+    },
+  },
+
+  storage: {
+    async uploadImage(file) {
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError("auth_required", "Sign in to upload images.");
+
+      if (!file.type.startsWith("image/")) {
+        throw new BackendError(
+          "validation_failed",
+          "Only image files can be uploaded.",
+        );
+      }
+      const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+      if (file.size > MAX_IMAGE_BYTES) {
+        throw new BackendError(
+          "validation_failed",
+          "Images must be 5 MB or smaller.",
+        );
+      }
+
+      const ext =
+        (file.name.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "") ||
+        "bin";
+      const path = `projects/${crypto.randomUUID()}.${ext}`;
+
+      const { error } = await client()
+        .storage.from("media")
+        .upload(path, file, { contentType: file.type, upsert: false });
+
+      if (error) {
+        throw new BackendError(
+          "forbidden",
+          "Could not upload the image. Only the owner can.",
+        );
+      }
+
+      const { data } = client().storage.from("media").getPublicUrl(path);
+      return data.publicUrl;
     },
   },
 };
@@ -596,7 +789,7 @@ async function countRows(
   return count ?? 0;
 }
 
-/** Maps Supabase auth messages to §3.3 codes. */
+/** Maps Supabase auth messages to our error codes. */
 function mapAuthCode(message: string) {
   const m = message.toLowerCase();
   if (m.includes("already registered")) return "conflict";

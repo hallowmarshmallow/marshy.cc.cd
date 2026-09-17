@@ -1,184 +1,196 @@
+import { useEffect, useState } from "react";
 import { Link } from "../../app/router";
-import { Atmosphere } from "../../components/atmosphere/Atmosphere";
-import { GlassCard } from "../../components/ui/GlassCard";
+import { Card } from "../../components/ui/Card";
+import { backend } from "../../services";
+import { StarButton } from "./StarButton";
+import type { ProjectEntry } from "../../types/domain";
 
-const PRINCIPLES = [
-  {
-    icon: "fa-solid fa-volume-xmark",
-    title: "Bring the rough draft",
-    body: "Share the rough draft, the half-formed idea, or nothing at all.",
-  },
-  {
-    icon: "fa-solid fa-people-roof",
-    title: "Keep it small",
-    body: "A room for familiar names and new friends—not an audience.",
-  },
-  {
-    icon: "fa-solid fa-lock",
-    title: "Private for now",
-    body: "Profiles and ripples stay inside the marsh while the doors are invite-only.",
-  },
-];
+/**
+ * Public landing page: a short introduction, the projects, contact details,
+ * and a link to the blog.
+ */
 
-const PROJECTS = [
+const GITHUB_USER = "hallowmarshmallow";
+const GITHUB_URL = `https://github.com/${GITHUB_USER}`;
+
+/** Shown under Contact. A Discord username is not a URL, so it renders as text. */
+const DISCORD_HANDLE = "hallowmarshmallow";
+
+/**
+ * Used until the projects table answers, so the page still works on a fresh
+ * clone with no backend configured. The owner edits the real list at /admin.
+ */
+const FALLBACK_PROJECTS: ProjectEntry[] = [
   {
-    label: "In progress",
+    id: "fallback-hallowmarsh",
     title: "Hallowmarsh",
-    body: "A living room for notes, experiments, and the people making them.",
-    icon: "fa-solid fa-water",
+    description: "This site: a small invite-only community and portfolio.",
+    repo: `${GITHUB_USER}/marshy.cc.cd`,
+    imageUrl: null,
+    sort: 1,
+    published: true,
   },
   {
-    label: "Built with care",
+    id: "fallback-marshapi",
     title: "MarshAPI",
-    body: "Small tools for classic game worlds, kept useful and pleasantly unglamorous.",
-    icon: "fa-solid fa-cubes",
+    description: "A fork of the ClassicUs API, kept updated for 2026.8.9.",
+    repo: `${GITHUB_USER}/ClassicUs.MarshAPI`,
+    imageUrl: null,
+    sort: 2,
+    published: true,
+  },
+  {
+    id: "fallback-reactor",
+    title: "ClassicUs.Reactor",
+    description: "A modded handshake for the game Classicus.",
+    repo: `${GITHUB_USER}/ClassicUs.Reactor`,
+    imageUrl: null,
+    sort: 3,
+    published: true,
+  },
+  {
+    id: "fallback-decompiled",
+    title: "Classicus decompiled",
+    description: "A decompiled dump of Classic Us plus Il2Cpp decompiler tooling.",
+    repo: `${GITHUB_USER}/classicus-decompiled`,
+    imageUrl: null,
+    sort: 4,
+    published: true,
+  },
+  {
+    id: "fallback-townofroles",
+    title: "townofroles",
+    description: "A small project. Description to come.",
+    repo: `${GITHUB_USER}/townofroles`,
+    imageUrl: null,
+    sort: 5,
+    published: true,
   },
 ];
 
 export function PortfolioPage() {
+  const [projects, setProjects] = useState<ProjectEntry[]>(FALLBACK_PROJECTS);
+
+  useEffect(() => {
+    let active = true;
+    backend.projects
+      .listPublished()
+      .then((list) => {
+        if (active) setProjects(list);
+      })
+      .catch(() => {
+        // No backend yet, or the projects table has not been applied: keep the
+        // built-in list rather than showing an empty section.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
-    <div className="portfolio-wrap">
-      <Atmosphere />
-      <nav className="portfolio-nav" aria-label="Site">
-        <span className="app-brand">
-          <i className="fa-solid fa-ghost app-brand-icon" aria-hidden="true" />{" "}
-          Hallowmarsh
-        </span>
-        <div className="portfolio-nav-right">
-          <Link to="/login" className="nav-login">
-            Member sign in{" "}
-            <i className="fa-solid fa-arrow-right" aria-hidden="true" />
-          </Link>
-        </div>
-      </nav>
+    <div className="site-page">
+      <header className="site-header">
+        <Link to="/" className="app-brand">
+          {GITHUB_USER}
+        </Link>
+        <Link to="/login" className="text-link">
+          Sign in
+        </Link>
+      </header>
 
-      <main className="portfolio">
-        <section className="hero hero-grid" aria-labelledby="hero-heading">
-          <div className="hero-copy">
-            <p className="hero-eyebrow">
-              <i className="fa-solid fa-leaf" aria-hidden="true" /> marshy.cc.cd
-              · private beta
-            </p>
-            <h1 id="hero-heading">
-              A small room for
-              <br />
-              <em className="hero-serif">little things.</em>
+      <main className="site-main">
+        <Card>
+          <section aria-labelledby="intro-heading">
+            <h1 id="intro-heading" className="intro-title">
+              Hi, I'm {GITHUB_USER}.
             </h1>
-            <p className="hero-sub">
-              Hallowmarsh is a private corner of the internet for friends,
-              developers, and artists. Bring a half-finished idea, a picture, or
-              a quiet hello.
+            <p className="intro-text">
+              I make small things, mostly for old games, and I rarely finish
+              them. None of it is impressive. This page is just where I keep
+              track of what I've been poking at.
             </p>
-            <div className="hero-actions">
-              <Link to="/login" className="btn btn-primary btn-lg">
-                <i className="fa-solid fa-key" aria-hidden="true" /> Come in
-                with an invite
+            <div className="intro-actions">
+              <Link to="/blog" className="btn btn-ghost">
+                Blog posts
               </Link>
-              <a className="text-link" href="#inside">
-                See what’s inside{" "}
-                <i className="fa-solid fa-arrow-down" aria-hidden="true" />
-              </a>
             </div>
-          </div>
-          <GlassCard className="hero-note">
-            <p className="hero-note-label">A note from the marsh</p>
-            <p className="hero-note-copy">
-              “Keep the circle small. Let the good stuff take its time.”
-            </p>
-            <p className="hero-note-signoff">— hallowmarshmallow</p>
-          </GlassCard>
-        </section>
+          </section>
+        </Card>
 
-        <div className="hero-stats" aria-label="Hallowmarsh status">
-          <span>private beta</span>
-          <span>member-only</span>
-          <span>made slowly</span>
-        </div>
-
-        <section
-          id="inside"
-          className="portfolio-section intro-section"
-          aria-labelledby="inside-heading"
-        >
-          <div className="section-heading-row">
-            <p className="section-index">01 / the feeling</p>
-            <h2 id="inside-heading">
-              A place to make things,
-              <br />
-              <em>without the audience.</em>
+        <Card>
+          <section aria-labelledby="projects-heading">
+            <h2 id="projects-heading" className="site-section-title">
+              Projects
             </h2>
-          </div>
-          <div className="principles-grid">
-            {PRINCIPLES.map((principle) => (
-              <GlassCard className="principle-card" key={principle.title}>
-                <i className={principle.icon} aria-hidden="true" />
-                <h3>{principle.title}</h3>
-                <p>{principle.body}</p>
-              </GlassCard>
-            ))}
-          </div>
-        </section>
+            {projects.length === 0 ? (
+              <p className="repo-desc">Nothing published right now.</p>
+            ) : (
+              <ul className="repo-list">
+                {projects.map((project) => (
+                  <li className="repo-item" key={project.id}>
+                    <div className="repo-thumb">
+                      {project.imageUrl ? (
+                        <img src={project.imageUrl} alt="" loading="lazy" />
+                      ) : (
+                        <i
+                          className="fa-regular fa-image repo-thumb-empty"
+                          aria-hidden="true"
+                        />
+                      )}
+                    </div>
+                    <div className="repo-info">
+                      {project.repo ? (
+                        <a
+                          className="repo-name"
+                          href={`https://github.com/${project.repo}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {project.title}
+                          <i
+                            className="fa-solid fa-arrow-up-right-from-square"
+                            aria-hidden="true"
+                          />
+                        </a>
+                      ) : (
+                        <span className="repo-name">{project.title}</span>
+                      )}
+                      {project.description ? (
+                        <p className="repo-desc">{project.description}</p>
+                      ) : null}
+                    </div>
+                    {project.repo ? (
+                      <div className="repo-actions">
+                        <StarButton repo={project.repo} />
+                      </div>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </Card>
 
-        <section
-          className="portfolio-section"
-          aria-labelledby="projects-heading"
-        >
-          <div className="section-heading-row section-heading-compact">
-            <p className="section-index">02 / things being made</p>
-            <h2 id="projects-heading">
-              A few things I’m building.
-              <br />
-              <em>Nothing too precious.</em>
+        <Card>
+          <section aria-labelledby="contact-heading">
+            <h2 id="contact-heading" className="site-section-title">
+              Contact
             </h2>
-          </div>
-          <div className="project-grid">
-            {PROJECTS.map((project) => (
-              <GlassCard className="project-card" key={project.title}>
-                <div className="project-card-top">
-                  <div className="project-icon">
-                    <i className={project.icon} aria-hidden="true" />
-                  </div>
-                  <span className="project-label">{project.label}</span>
-                </div>
-                <h3>{project.title}</h3>
-                <p>{project.body}</p>
-                <span className="project-arrow" aria-hidden="true">
-                  <i className="fa-solid fa-arrow-up-right" />
-                </span>
-              </GlassCard>
-            ))}
-          </div>
-        </section>
-
-        <section
-          className="portfolio-section invite-section"
-          aria-labelledby="invite-heading"
-        >
-          <GlassCard className="community-card">
-            <p className="section-index">03 / the door</p>
-            <h2 id="invite-heading">
-              Keep the circle
-              <br />
-              <em>intentional.</em>
-            </h2>
-            <p className="community-sub">
-              Hallowmarsh is invite-only while it finds its shape. If someone
-              inside sent you a code, you’re welcome in. Public launch can wait.
-            </p>
-            <Link to="/login" className="btn btn-primary btn-lg">
-              <i className="fa-solid fa-key" aria-hidden="true" /> I have an
-              invite
-            </Link>
-          </GlassCard>
-        </section>
-
-        <footer className="portfolio-footer">
-          <span>© 2026 hallowmarshmallow</span>
-          <span>
-            made slowly <i className="fa-solid fa-bolt" aria-hidden="true" />
-          </span>
-        </footer>
+            <ul className="contact-list">
+              <li>
+                <a href={GITHUB_URL} target="_blank" rel="noreferrer">
+                  GitHub
+                </a>
+              </li>
+              <li>
+                Discord <span className="contact-value">{DISCORD_HANDLE}</span>
+              </li>
+            </ul>
+          </section>
+        </Card>
       </main>
+
+      <footer className="site-footer">© 2026 {GITHUB_USER}</footer>
     </div>
   );
 }
