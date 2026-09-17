@@ -5,17 +5,17 @@ import { GlassCard } from "../../components/ui/GlassCard";
 const PRINCIPLES = [
   {
     icon: "fa-solid fa-volume-xmark",
-    title: "No performance",
+    title: "Bring the rough draft",
     body: "Share the rough draft, the half-formed idea, or nothing at all.",
   },
   {
     icon: "fa-solid fa-people-roof",
-    title: "Small by design",
+    title: "Keep it small",
     body: "A room for familiar names and new friends—not an audience.",
   },
   {
     icon: "fa-solid fa-lock",
-    title: "Private by default",
+    title: "Private for now",
     body: "Profiles and ripples stay inside the marsh while the doors are invite-only.",
   },
 ];
@@ -45,9 +45,6 @@ export function PortfolioPage() {
           Hallowmarsh
         </span>
         <div className="portfolio-nav-right">
-          <span className="nav-status">
-            <span className="live-mark" aria-hidden="true" /> doors are quiet
-          </span>
           <Link to="/login" className="nav-login">
             Member sign in{" "}
             <i className="fa-solid fa-arrow-right" aria-hidden="true" />
@@ -59,23 +56,23 @@ export function PortfolioPage() {
         <section className="hero hero-grid" aria-labelledby="hero-heading">
           <div className="hero-copy">
             <p className="hero-eyebrow">
-              <i className="fa-solid fa-sparkles" aria-hidden="true" />{" "}
-              marshy.cc.cd · private beta
+              <i className="fa-solid fa-leaf" aria-hidden="true" /> marshy.cc.cd
+              · private beta
             </p>
             <h1 id="hero-heading">
               A small room for
               <br />
-              <em className="hero-serif">big little things.</em>
+              <em className="hero-serif">little things.</em>
             </h1>
             <p className="hero-sub">
               Hallowmarsh is a private corner of the internet for friends,
-              developers, and artists who would rather make something real than
-              feed the scroll.
+              developers, and artists. Bring a half-finished idea, a picture, or
+              a quiet hello.
             </p>
             <div className="hero-actions">
               <Link to="/login" className="btn btn-primary btn-lg">
-                <i className="fa-solid fa-key" aria-hidden="true" /> Enter with
-                an invite
+                <i className="fa-solid fa-key" aria-hidden="true" /> Come in
+                with an invite
               </Link>
               <a className="text-link" href="#inside">
                 See what’s inside{" "}
@@ -83,52 +80,19 @@ export function PortfolioPage() {
               </a>
             </div>
           </div>
-          <GlassCard className="hero-console">
-            <div className="console-topline">
-              <span className="console-pulse">
-                <span className="live-mark" aria-hidden="true" /> LIVE ROOM
-              </span>
-              <span>01 / 03</span>
-            </div>
-            <div className="console-orbit" aria-hidden="true">
-              <span className="orbit-ring orbit-ring-one" />
-              <span className="orbit-ring orbit-ring-two" />
-              <span className="orbit-core">
-                <i className="fa-solid fa-ghost" />
-              </span>
-              <span className="orbit-spark spark-one" />
-              <span className="orbit-spark spark-two" />
-            </div>
-            <p className="console-title">The lights are on.</p>
-            <p className="console-copy">
-              A few good people are already making ripples. Public doors come
-              later.
+          <GlassCard className="hero-note">
+            <p className="hero-note-label">A note from the marsh</p>
+            <p className="hero-note-copy">
+              “Keep the circle small. Let the good stuff take its time.”
             </p>
-            <div className="console-footer">
-              <span>
-                <i className="fa-solid fa-shield-halved" aria-hidden="true" />{" "}
-                invite-only
-              </span>
-              <span>
-                <i className="fa-solid fa-moon" aria-hidden="true" /> low noise
-              </span>
-            </div>
+            <p className="hero-note-signoff">— hallowmarshmallow</p>
           </GlassCard>
         </section>
 
         <div className="hero-stats" aria-label="Hallowmarsh status">
-          <span>
-            <i className="fa-solid fa-circle-check" aria-hidden="true" />{" "}
-            private beta
-          </span>
-          <span>
-            <i className="fa-solid fa-user-group" aria-hidden="true" /> small on
-            purpose
-          </span>
-          <span>
-            <i className="fa-solid fa-code" aria-hidden="true" /> growing in
-            public, living in private
-          </span>
+          <span>private beta</span>
+          <span>member-only</span>
+          <span>made slowly</span>
         </div>
 
         <section
@@ -139,9 +103,9 @@ export function PortfolioPage() {
           <div className="section-heading-row">
             <p className="section-index">01 / the feeling</p>
             <h2 id="inside-heading">
-              A place with a pulse,
+              A place to make things,
               <br />
-              <em>without the pressure.</em>
+              <em>without the audience.</em>
             </h2>
           </div>
           <div className="principles-grid">
@@ -160,11 +124,11 @@ export function PortfolioPage() {
           aria-labelledby="projects-heading"
         >
           <div className="section-heading-row section-heading-compact">
-            <p className="section-index">02 / things in motion</p>
+            <p className="section-index">02 / things being made</p>
             <h2 id="projects-heading">
-              Built in the open.
+              A few things I’m building.
               <br />
-              <em>Shared with care.</em>
+              <em>Nothing too precious.</em>
             </h2>
           </div>
           <div className="project-grid">

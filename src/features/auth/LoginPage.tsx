@@ -89,8 +89,8 @@ export function LoginPage({
         <div className="auth-layout">
           <section className="auth-intro" aria-labelledby="auth-heading">
             <p className="auth-kicker">
-              <span className="live-mark" aria-hidden="true" /> Private beta ·
-              invite only
+              <i className="fa-solid fa-lock" aria-hidden="true" /> Private beta
+              · invite only
             </p>
             <h1 id="auth-heading">A quieter kind of online.</h1>
             <p>
@@ -98,18 +98,9 @@ export function LoginPage({
               unfinished thoughts, and know when to leave the noise outside.
             </p>
             <div className="auth-signals" aria-label="What members get">
-              <span>
-                <i className="fa-solid fa-lock" aria-hidden="true" />{" "}
-                Member-only feed
-              </span>
-              <span>
-                <i className="fa-solid fa-feather-pointed" aria-hidden="true" />{" "}
-                Low-pressure sharing
-              </span>
-              <span>
-                <i className="fa-solid fa-moon" aria-hidden="true" /> No public
-                profiles
-              </span>
+              <span>Member-only feed</span>
+              <span>Low-pressure sharing</span>
+              <span>No public profiles</span>
             </div>
           </section>
 

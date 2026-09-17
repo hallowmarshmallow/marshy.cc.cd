@@ -88,13 +88,7 @@ html {
 
 body {
   min-height: 100dvh;
-  background:
-    radial-gradient(
-      circle at 50% -20%,
-      rgba(115, 232, 255, 0.08),
-      transparent 36rem
-    ),
-    var(--color-bg);
+  background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 16px;

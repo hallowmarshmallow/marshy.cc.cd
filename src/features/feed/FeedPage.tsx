@@ -189,9 +189,7 @@ export function FeedPage() {
         <div className="feed-container">
           <header className="feed-header">
             <div>
-              <p className="feed-kicker">
-                <span className="live-mark" aria-hidden="true" /> member room
-              </p>
+              <p className="feed-kicker">member feed</p>
               <h1 className="feed-title">The Marsh</h1>
               <p className="feed-subtitle">
                 A live, low-noise stream from the people inside.
