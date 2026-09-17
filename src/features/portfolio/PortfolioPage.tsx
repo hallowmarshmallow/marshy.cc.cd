@@ -1,191 +1,220 @@
-import { GlassCard } from '../../components/ui/GlassCard'
-import { Atmosphere } from '../../components/atmosphere/Atmosphere'
-import { Link } from '../../app/router'
+import { Link } from "../../app/router";
+import { Atmosphere } from "../../components/atmosphere/Atmosphere";
+import { GlassCard } from "../../components/ui/GlassCard";
 
-const LINKS: Array<{ icon: string; label: string; url: string }> = [
-  { icon: 'fa-brands fa-github', label: 'GitHub', url: 'https://github.com/hallowmarshmallow' },
-]
+const PRINCIPLES = [
+  {
+    icon: "fa-solid fa-volume-xmark",
+    title: "No performance",
+    body: "Share the rough draft, the half-formed idea, or nothing at all.",
+  },
+  {
+    icon: "fa-solid fa-people-roof",
+    title: "Small by design",
+    body: "A room for familiar names and new friends—not an audience.",
+  },
+  {
+    icon: "fa-solid fa-lock",
+    title: "Private by default",
+    body: "Profiles and ripples stay inside the marsh while the doors are invite-only.",
+  },
+];
 
-const SKILLS: Array<{ icon: string; name: string; note: string }> = [
-  { icon: 'fa-solid fa-code', name: 'TypeScript', note: 'This very site' },
-  { icon: 'fa-solid fa-cubes', name: 'C# / .NET', note: 'ClassicUs tooling' },
-  { icon: 'fa-solid fa-terminal', name: 'Tooling & bots', note: 'Modded clients, scripts' },
-  { icon: 'fa-solid fa-wand-magic-sparkles', name: 'Community design', note: 'Hallowmarsh itself' },
-]
-
-const GALLERY: Array<{ glyph: string; label: string; planned: boolean }> = [
-  { glyph: 'fa-solid fa-moon', label: 'Moonrise over the marsh', planned: false },
-  { glyph: 'fa-solid fa-leaf', label: 'Fog study I', planned: false },
-  { glyph: 'fa-solid fa-fire-flame-curved', label: 'Ember pond', planned: false },
-  { glyph: 'fa-solid fa-tower-observation', label: 'The watchtower', planned: false },
-  { glyph: 'fa-solid fa-water', label: 'Still water', planned: false },
-  { glyph: 'fa-solid fa-ghost', label: 'Hallowmarsh, at dusk', planned: false },
-]
+const PROJECTS = [
+  {
+    label: "In progress",
+    title: "Hallowmarsh",
+    body: "A living room for notes, experiments, and the people making them.",
+    icon: "fa-solid fa-water",
+  },
+  {
+    label: "Built with care",
+    title: "MarshAPI",
+    body: "Small tools for classic game worlds, kept useful and pleasantly unglamorous.",
+    icon: "fa-solid fa-cubes",
+  },
+];
 
 export function PortfolioPage() {
   return (
     <div className="portfolio-wrap">
       <Atmosphere />
+      <nav className="portfolio-nav" aria-label="Site">
+        <span className="app-brand">
+          <i className="fa-solid fa-ghost app-brand-icon" aria-hidden="true" />{" "}
+          Hallowmarsh
+        </span>
+        <div className="portfolio-nav-right">
+          <span className="nav-status">
+            <span className="live-mark" aria-hidden="true" /> doors are quiet
+          </span>
+          <Link to="/login" className="nav-login">
+            Member sign in{" "}
+            <i className="fa-solid fa-arrow-right" aria-hidden="true" />
+          </Link>
+        </div>
+      </nav>
+
       <main className="portfolio">
-        {/* HERO */}
-        <section className="hero" aria-labelledby="hero-heading">
-          <p className="hero-eyebrow">
-            <i className="fa-solid fa-leaf" aria-hidden="true" /> marshy.cc.cd
-          </p>
-          <h1 id="hero-heading">
-            A small, quiet place
-            <br />
-            <em className="hero-serif">on the internet.</em>
-          </h1>
-          <p className="hero-sub">
-            Home of Hallowmarsh — a tiny community for friends, developers, and artists. Built small on
-            purpose, honest about what exists, and growing like a garden.
-          </p>
-          <div className="hero-actions">
-            <Link to="/login" className="btn btn-primary btn-lg">
-              <i className="fa-solid fa-door-open" aria-hidden="true" /> Join the marsh
-            </Link>
-            <a className="btn btn-ghost btn-lg" href="https://github.com/hallowmarshmallow" target="_blank" rel="noopener noreferrer">
-              <i className="fa-brands fa-github" aria-hidden="true" /> GitHub
-            </a>
-          </div>
-          <p className="hero-stats">
-            <span>
-              <i className="fa-solid fa-seedling" aria-hidden="true" /> Founded 2026
-            </span>
-            <span>
-              <i className="fa-solid fa-users" aria-hidden="true" /> Phase 1 · early growth
-            </span>
-            <span>
-              <i className="fa-solid fa-code-branch" aria-hidden="true" /> Built in the open
-            </span>
-          </p>
-        </section>
-
-        {/* ABOUT */}
-        <section className="portfolio-section" aria-labelledby="about-heading">
-          <h2 className="section-title">
-            <i className="fa-solid fa-fire-flame-curved" aria-hidden="true" /> About
-          </h2>
-          <GlassCard className="about-card">
-            <p>
-              Hallowmarsh is a personal ecosystem: a quiet portfolio out here, a cozy community in there.
-              No algorithm, no noise — just a place for friends to build, share, and linger.
+        <section className="hero hero-grid" aria-labelledby="hero-heading">
+          <div className="hero-copy">
+            <p className="hero-eyebrow">
+              <i className="fa-solid fa-sparkles" aria-hidden="true" />{" "}
+              marshy.cc.cd · private beta
             </p>
-          </GlassCard>
-        </section>
-
-        {/* PROJECTS */}
-        <section className="portfolio-section" aria-labelledby="projects-heading">
-          <h2 className="section-title">
-            <i className="fa-solid fa-diagram-project" aria-hidden="true" /> Projects
-          </h2>
-          <div className="project-grid">
-            <GlassCard className="project-card">
-              <div className="project-icon">
-                <i className="fa-brands fa-git-alt" aria-hidden="true" />
-              </div>
-              <h3>ClassicUs.MarshAPI</h3>
-              <p>A fork of ClassicUs.ManuAPI updated for 2026.8.9 (no gamelibs).</p>
-              <p className="project-tech">C# · GitHub</p>
-              <a href="https://github.com/hallowmarshmallow/ClassicUs.MarshAPI" target="_blank" rel="noopener noreferrer">
-                View on GitHub <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />
-              </a>
-            </GlassCard>
-            <GlassCard className="project-card project-card-planned">
-              <div className="project-icon">
-                <i className="fa-solid fa-ghost" aria-hidden="true" />
-              </div>
-              <h3>Hallowmarsh itself</h3>
-              <p>The community platform you're looking at. Feed, profiles, themes — built in the open.</p>
-              <p className="project-tech">TypeScript · React · Supabase</p>
-              <span className="planned-tag">
-                <i className="fa-solid fa-seedling" aria-hidden="true" /> Growing now
-              </span>
-            </GlassCard>
-          </div>
-        </section>
-
-        {/* SKILLS */}
-        <section className="portfolio-section" aria-labelledby="skills-heading">
-          <h2 className="section-title">
-            <i className="fa-solid fa-screwdriver-wrench" aria-hidden="true" /> Skills
-          </h2>
-          <div className="skill-grid">
-            {SKILLS.map((s) => (
-              <div className="skill-tile" key={s.name}>
-                <i className={s.icon} aria-hidden="true" />
-                <div>
-                  <p className="skill-name">{s.name}</p>
-                  <p className="skill-note">{s.note}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* GALLERY */}
-        <section className="portfolio-section" aria-labelledby="gallery-heading">
-          <h2 className="section-title">
-            <i className="fa-solid fa-images" aria-hidden="true" /> Gallery
-          </h2>
-          <p className="section-note">Illustrative placeholders — real art gets uploaded via the app (Phase 4).</p>
-          <div className="gallery-grid">
-            {GALLERY.map((g) => (
-              <figure className="gallery-item" key={g.label}>
-                <div className="gallery-art">
-                  <i className={g.glyph} aria-hidden="true" />
-                </div>
-                <figcaption>{g.label}</figcaption>
-              </figure>
-            ))}
-          </div>
-        </section>
-
-        {/* COMMUNITY CTA */}
-        <section className="portfolio-section" aria-labelledby="community-heading">
-          <h2 className="section-title">
-            <i className="fa-solid fa-comments" aria-hidden="true" /> The community
-          </h2>
-          <GlassCard className="community-card">
-            <p className="community-line">“This is our place on the internet.”</p>
-            <p className="community-sub">
-              Feed, profiles, custom themes, badges — a small pond with room to grow. Accounts are open.
+            <h1 id="hero-heading">
+              A small room for
+              <br />
+              <em className="hero-serif">big little things.</em>
+            </h1>
+            <p className="hero-sub">
+              Hallowmarsh is a private corner of the internet for friends,
+              developers, and artists who would rather make something real than
+              feed the scroll.
             </p>
             <div className="hero-actions">
               <Link to="/login" className="btn btn-primary btn-lg">
-                <i className="fa-solid fa-door-open" aria-hidden="true" /> Step inside
+                <i className="fa-solid fa-key" aria-hidden="true" /> Enter with
+                an invite
               </Link>
+              <a className="text-link" href="#inside">
+                See what’s inside{" "}
+                <i className="fa-solid fa-arrow-down" aria-hidden="true" />
+              </a>
+            </div>
+          </div>
+          <GlassCard className="hero-console">
+            <div className="console-topline">
+              <span className="console-pulse">
+                <span className="live-mark" aria-hidden="true" /> LIVE ROOM
+              </span>
+              <span>01 / 03</span>
+            </div>
+            <div className="console-orbit" aria-hidden="true">
+              <span className="orbit-ring orbit-ring-one" />
+              <span className="orbit-ring orbit-ring-two" />
+              <span className="orbit-core">
+                <i className="fa-solid fa-ghost" />
+              </span>
+              <span className="orbit-spark spark-one" />
+              <span className="orbit-spark spark-two" />
+            </div>
+            <p className="console-title">The lights are on.</p>
+            <p className="console-copy">
+              A few good people are already making ripples. Public doors come
+              later.
+            </p>
+            <div className="console-footer">
+              <span>
+                <i className="fa-solid fa-shield-halved" aria-hidden="true" />{" "}
+                invite-only
+              </span>
+              <span>
+                <i className="fa-solid fa-moon" aria-hidden="true" /> low noise
+              </span>
             </div>
           </GlassCard>
         </section>
 
-        {/* ELSEWHERE */}
-        <section className="portfolio-section" aria-labelledby="links-heading">
-          <h2 className="section-title">
-            <i className="fa-solid fa-link" aria-hidden="true" /> Elsewhere
-          </h2>
-          <GlassCard>
-            <ul className="link-list">
-              {LINKS.map((l) => (
-                <li key={l.url}>
-                  <a href={l.url} target="_blank" rel="noopener noreferrer">
-                    <i className={l.icon} aria-hidden="true" /> {l.label}{' '}
-                    <i className="fa-solid fa-arrow-up-right-from-square" aria-hidden="true" />
-                  </a>
-                </li>
-              ))}
-            </ul>
+        <div className="hero-stats" aria-label="Hallowmarsh status">
+          <span>
+            <i className="fa-solid fa-circle-check" aria-hidden="true" />{" "}
+            private beta
+          </span>
+          <span>
+            <i className="fa-solid fa-user-group" aria-hidden="true" /> small on
+            purpose
+          </span>
+          <span>
+            <i className="fa-solid fa-code" aria-hidden="true" /> growing in
+            public, living in private
+          </span>
+        </div>
+
+        <section
+          id="inside"
+          className="portfolio-section intro-section"
+          aria-labelledby="inside-heading"
+        >
+          <div className="section-heading-row">
+            <p className="section-index">01 / the feeling</p>
+            <h2 id="inside-heading">
+              A place with a pulse,
+              <br />
+              <em>without the pressure.</em>
+            </h2>
+          </div>
+          <div className="principles-grid">
+            {PRINCIPLES.map((principle) => (
+              <GlassCard className="principle-card" key={principle.title}>
+                <i className={principle.icon} aria-hidden="true" />
+                <h3>{principle.title}</h3>
+                <p>{principle.body}</p>
+              </GlassCard>
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="portfolio-section"
+          aria-labelledby="projects-heading"
+        >
+          <div className="section-heading-row section-heading-compact">
+            <p className="section-index">02 / things in motion</p>
+            <h2 id="projects-heading">
+              Built in the open.
+              <br />
+              <em>Shared with care.</em>
+            </h2>
+          </div>
+          <div className="project-grid">
+            {PROJECTS.map((project) => (
+              <GlassCard className="project-card" key={project.title}>
+                <div className="project-card-top">
+                  <div className="project-icon">
+                    <i className={project.icon} aria-hidden="true" />
+                  </div>
+                  <span className="project-label">{project.label}</span>
+                </div>
+                <h3>{project.title}</h3>
+                <p>{project.body}</p>
+                <span className="project-arrow" aria-hidden="true">
+                  <i className="fa-solid fa-arrow-up-right" />
+                </span>
+              </GlassCard>
+            ))}
+          </div>
+        </section>
+
+        <section
+          className="portfolio-section invite-section"
+          aria-labelledby="invite-heading"
+        >
+          <GlassCard className="community-card">
+            <p className="section-index">03 / the door</p>
+            <h2 id="invite-heading">
+              Keep the circle
+              <br />
+              <em>intentional.</em>
+            </h2>
+            <p className="community-sub">
+              Hallowmarsh is invite-only while it finds its shape. If someone
+              inside sent you a code, you’re welcome in. Public launch can wait.
+            </p>
+            <Link to="/login" className="btn btn-primary btn-lg">
+              <i className="fa-solid fa-key" aria-hidden="true" /> I have an
+              invite
+            </Link>
           </GlassCard>
         </section>
 
         <footer className="portfolio-footer">
-          <p>
-            © 2026 hallowmarshmallow · marshy.cc.cd · <i className="fa-solid fa-fan" aria-hidden="true" /> built
-            with quiet obsession
-          </p>
+          <span>© 2026 hallowmarshmallow</span>
+          <span>
+            made slowly <i className="fa-solid fa-bolt" aria-hidden="true" />
+          </span>
         </footer>
       </main>
     </div>
-  )
+  );
 }

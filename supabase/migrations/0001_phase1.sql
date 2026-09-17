@@ -278,7 +278,7 @@ alter table public.user_roles          enable row level security;
 alter table public.platform_metrics    enable row level security;
 alter table public.audit_log           enable row level security;
 
--- profiles: public read; write own only
+-- profiles: public read in the original phase; 0002 closes this for the private beta
 create policy profiles_read   on public.profiles for select using (true);
 create policy profiles_update on public.profiles for update using (auth.uid() = user_id);
 
@@ -293,7 +293,7 @@ create policy blocks_owner on public.blocks for all
 create policy mutes_owner on public.mutes for all
   using (auth.uid() = muter_id) with check (auth.uid() = muter_id);
 
--- posts: public reads public; friends-visibility read via follows; write own
+-- posts: public reads in the original phase; 0002 closes this for the private beta
 create policy posts_read_public on public.posts for select
   using (
     deleted_at is null

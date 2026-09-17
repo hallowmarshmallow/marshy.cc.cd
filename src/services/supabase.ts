@@ -1,8 +1,15 @@
 /* eslint-disable-next-line no-restricted-imports -- this file IS the Supabase adapter */
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
-import type { AuthProvider, Post, Profile, ReactionType, SessionInfo, Visibility } from '../types/domain'
-import { BackendError } from './errors'
-import { UNCONFIGURED_MESSAGE, type BackendAdapter } from './backend'
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type {
+  AuthProvider,
+  Post,
+  Profile,
+  ReactionType,
+  SessionInfo,
+  Visibility,
+} from "../types/domain";
+import { BackendError } from "./errors";
+import { UNCONFIGURED_MESSAGE, type BackendAdapter } from "./backend";
 
 /**
  * Supabase adapter — the Phase-1 default provider (§3.1 [R]).
@@ -10,33 +17,43 @@ import { UNCONFIGURED_MESSAGE, type BackendAdapter } from './backend'
  * '@supabase/supabase-js' directly (enforced by lint rule no-restricted-imports).
  */
 
-const env = import.meta.env
+const env = import.meta.env;
 
 export function isBackendConfigured(): boolean {
-  return Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY)
+  return Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY);
 }
 
 function client(): SupabaseClient {
   if (!isBackendConfigured()) {
     // Fail loudly but human-readably (§0.3-6: no silent failures).
-    throw new BackendError('provider_error', UNCONFIGURED_MESSAGE)
+    throw new BackendError("provider_error", UNCONFIGURED_MESSAGE);
   }
-  return createClient(env.VITE_SUPABASE_URL as string, env.VITE_SUPABASE_ANON_KEY as string, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
+  return createClient(
+    env.VITE_SUPABASE_URL as string,
+    env.VITE_SUPABASE_ANON_KEY as string,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
     },
-  })
+  );
 }
 
-function mapUserToSession(user: { id: string; email?: string | null; email_confirmed_at?: string | null } | null): SessionInfo | null {
-  if (!user) return null
+function mapUserToSession(
+  user: {
+    id: string;
+    email?: string | null;
+    email_confirmed_at?: string | null;
+  } | null,
+): SessionInfo | null {
+  if (!user) return null;
   return {
     userId: user.id,
     email: user.email ?? null,
     emailVerified: Boolean(user.email_confirmed_at),
-  }
+  };
 }
 
 function mapProfile(row: Record<string, unknown>): Profile {
@@ -44,163 +61,227 @@ function mapProfile(row: Record<string, unknown>): Profile {
     id: String(row.user_id),
     handle: String(row.handle),
     displayName: String(row.display_name ?? row.handle),
-    bio: String(row.bio ?? ''),
+    bio: String(row.bio ?? ""),
     avatarUrl: (row.avatar_url as string | null) ?? null,
     bannerUrl: (row.banner_url as string | null) ?? null,
     customStatus: (row.custom_status as string | null) ?? null,
-    presence: 'online',
+    presence: "online",
     joinedAt: String(row.created_at),
-  }
+  };
 }
 
-const OAUTH_PROVIDER_MAP: Record<Exclude<AuthProvider, 'email'>, string> = {
-  google: 'google',
-  discord: 'discord',
-  github: 'github',
-}
+const OAUTH_PROVIDER_MAP: Record<Exclude<AuthProvider, "email">, string> = {
+  google: "google",
+  discord: "discord",
+  github: "github",
+};
 
 export const supabaseAdapter: BackendAdapter = {
-  name: 'supabase',
+  name: "supabase",
 
   auth: {
     async getSession() {
-      const { data, error } = await client().auth.getSession()
-      if (error) throw new BackendError('auth_invalid', error.message)
-      return mapUserToSession(data.session?.user ?? null)
+      const { data, error } = await client().auth.getSession();
+      if (error) throw new BackendError("auth_invalid", error.message);
+      return mapUserToSession(data.session?.user ?? null);
     },
 
-    async signUp({ email, password }) {
-      const { error } = await client().auth.signUp({ email, password })
-      if (error) throw new BackendError(mapAuthCode(error.message), humanAuthMessage(error.message))
+    async signUp({ email, password, handle, inviteCode }) {
+      const { error } = await client().auth.signUp({
+        email,
+        password,
+        options: {
+          data: { handle, invite_code: inviteCode.trim().toUpperCase() },
+        },
+      });
+      if (error?.message.toLowerCase().includes("invite_required")) {
+        throw new BackendError(
+          "forbidden",
+          "That invite code is invalid or has already been used.",
+        );
+      }
+      if (error)
+        throw new BackendError(
+          mapAuthCode(error.message),
+          humanAuthMessage(error.message),
+        );
     },
 
     async signIn({ email, password }) {
-      const { error } = await client().auth.signInWithPassword({ email, password })
-      if (error) throw new BackendError(mapAuthCode(error.message), humanAuthMessage(error.message))
+      const { error } = await client().auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error)
+        throw new BackendError(
+          mapAuthCode(error.message),
+          humanAuthMessage(error.message),
+        );
     },
 
     async signInWithOAuth(provider) {
       const { error } = await client().auth.signInWithOAuth({
         provider: OAUTH_PROVIDER_MAP[provider] as never,
         options: { redirectTo: window.location.origin },
-      })
-      if (error) throw new BackendError('provider_error', humanAuthMessage(error.message))
+      });
+      if (error)
+        throw new BackendError(
+          "provider_error",
+          humanAuthMessage(error.message),
+        );
     },
 
     async signOut() {
-      const { error } = await client().auth.signOut()
-      if (error) throw new BackendError('server_error', 'Could not sign out. Try again.')
+      const { error } = await client().auth.signOut();
+      if (error)
+        throw new BackendError(
+          "server_error",
+          "Could not sign out. Try again.",
+        );
     },
 
     async requestPasswordReset(email) {
       const { error } = await client().auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/login',
-      })
-      if (error) throw new BackendError(mapAuthCode(error.message), humanAuthMessage(error.message))
+        redirectTo: window.location.origin + "/login",
+      });
+      if (error)
+        throw new BackendError(
+          mapAuthCode(error.message),
+          humanAuthMessage(error.message),
+        );
     },
   },
 
   profiles: {
     async getOwn() {
-      const session = await supabaseAdapter.auth.getSession()
-      if (!session) return null
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session) return null;
       const { data, error } = await client()
-        .from('profiles')
-        .select('*')
-        .eq('user_id', session.userId)
-        .maybeSingle()
-      if (error) throw new BackendError('server_error', 'Could not load your profile. Retry in a moment.')
-      return data ? mapProfile(data) : null
+        .from("profiles")
+        .select("*")
+        .eq("user_id", session.userId)
+        .maybeSingle();
+      if (error)
+        throw new BackendError(
+          "server_error",
+          "Could not load your profile. Retry in a moment.",
+        );
+      return data ? mapProfile(data) : null;
     },
 
     async getByHandle(handle) {
       const { data, error } = await client()
-        .from('profiles')
-        .select('*')
-        .eq('handle', handle)
-        .maybeSingle()
-      if (error) throw new BackendError('server_error', 'Could not load this profile. Retry in a moment.')
-      return data ? mapProfile(data) : null
+        .from("profiles")
+        .select("*")
+        .eq("handle", handle)
+        .maybeSingle();
+      if (error)
+        throw new BackendError(
+          "server_error",
+          "Could not load this profile. Retry in a moment.",
+        );
+      return data ? mapProfile(data) : null;
     },
 
     async updateOwn(patch) {
-      const session = await supabaseAdapter.auth.getSession()
-      if (!session) throw new BackendError('auth_required', 'Sign in to update your profile.')
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError(
+          "auth_required",
+          "Sign in to update your profile.",
+        );
 
-      const dbPatch: Record<string, unknown> = {}
-      if (patch.displayName !== undefined) dbPatch.display_name = patch.displayName
-      if (patch.bio !== undefined) dbPatch.bio = patch.bio
-      if (patch.customStatus !== undefined) dbPatch.custom_status = patch.customStatus
-      if (patch.avatarUrl !== undefined) dbPatch.avatar_url = patch.avatarUrl
-      if (patch.bannerUrl !== undefined) dbPatch.banner_url = patch.bannerUrl
+      const dbPatch: Record<string, unknown> = {};
+      if (patch.displayName !== undefined)
+        dbPatch.display_name = patch.displayName;
+      if (patch.bio !== undefined) dbPatch.bio = patch.bio;
+      if (patch.customStatus !== undefined)
+        dbPatch.custom_status = patch.customStatus;
+      if (patch.avatarUrl !== undefined) dbPatch.avatar_url = patch.avatarUrl;
+      if (patch.bannerUrl !== undefined) dbPatch.banner_url = patch.bannerUrl;
 
       const { data, error } = await client()
-        .from('profiles')
+        .from("profiles")
         .update(dbPatch)
-        .eq('user_id', session.userId)
+        .eq("user_id", session.userId)
         .select()
-        .single()
-      if (error) throw new BackendError('validation_failed', humanProfileMessage())
-      return mapProfile(data)
+        .single();
+      if (error)
+        throw new BackendError("validation_failed", humanProfileMessage());
+      return mapProfile(data);
     },
   },
 
   social: {
     async getFollowCounts(userId) {
       const [followers, following] = await Promise.all([
-        countRows('follows', 'follower_id', 'followee_id', userId),
-        countRows('follows', 'followee_id', 'follower_id', userId),
-      ])
-      return { followers, following }
+        countRows("follows", "follower_id", "followee_id", userId),
+        countRows("follows", "followee_id", "follower_id", userId),
+      ]);
+      return { followers, following };
     },
 
     async isFollowing(followerId, followeeId) {
       const { data, error } = await client()
-        .from('follows')
-        .select('follower_id')
-        .eq('follower_id', followerId)
-        .eq('followee_id', followeeId)
-        .maybeSingle()
-      if (error) throw new BackendError('server_error', 'Could not check the follow state. Retry in a moment.')
-      return data !== null
+        .from("follows")
+        .select("follower_id")
+        .eq("follower_id", followerId)
+        .eq("followee_id", followeeId)
+        .maybeSingle();
+      if (error)
+        throw new BackendError(
+          "server_error",
+          "Could not check the follow state. Retry in a moment.",
+        );
+      return data !== null;
     },
 
     async follow(targetUserId) {
-      const session = await supabaseAdapter.auth.getSession()
-      if (!session) throw new BackendError('auth_required', 'Sign in to follow people.')
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError("auth_required", "Sign in to follow people.");
 
-      const { error } = await client().from('follows').insert({
+      const { error } = await client().from("follows").insert({
         follower_id: session.userId,
         followee_id: targetUserId,
-      })
+      });
       if (error) {
         // RLS already blocks following yourself (PK/check) and impersonation.
-        const m = error.message.toLowerCase()
-        if (m.includes('duplicate') || m.includes('unique constraint')) {
-          throw new BackendError('conflict', 'You already follow them.')
+        const m = error.message.toLowerCase();
+        if (m.includes("duplicate") || m.includes("unique constraint")) {
+          throw new BackendError("conflict", "You already follow them.");
         }
-        throw new BackendError('forbidden', 'Could not follow right now. Try again in a moment.')
+        throw new BackendError(
+          "forbidden",
+          "Could not follow right now. Try again in a moment.",
+        );
       }
     },
 
     async unfollow(targetUserId) {
-      const session = await supabaseAdapter.auth.getSession()
-      if (!session) throw new BackendError('auth_required', 'Sign in to unfollow people.')
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError("auth_required", "Sign in to unfollow people.");
 
       const { error } = await client()
-        .from('follows')
+        .from("follows")
         .delete()
-        .eq('follower_id', session.userId)
-        .eq('followee_id', targetUserId)
-      if (error) throw new BackendError('server_error', 'Could not unfollow right now. Try again in a moment.')
+        .eq("follower_id", session.userId)
+        .eq("followee_id", targetUserId);
+      if (error)
+        throw new BackendError(
+          "server_error",
+          "Could not unfollow right now. Try again in a moment.",
+        );
     },
   },
 
   posts: {
     async listFeed(options) {
       const { data, error } = await client()
-        .from('posts')
-        .select(`
+        .from("posts")
+        .select(
+          `
           id,
           author_id,
           body,
@@ -210,21 +291,26 @@ export const supabaseAdapter: BackendAdapter = {
           deleted_at,
           author:profiles!posts_author_id_fkey(handle, display_name, avatar_url),
           post_reaction_counts(count)
-        `)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(options?.limit ?? 50)
+        `,
+        )
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(options?.limit ?? 50);
 
       if (error) {
-        throw new BackendError('server_error', 'Could not load feed. Retry in a moment.')
+        throw new BackendError(
+          "server_error",
+          "Could not load feed. Retry in a moment.",
+        );
       }
-      return enrichPosts((data ?? []) as Record<string, unknown>[])
+      return enrichPosts((data ?? []) as Record<string, unknown>[]);
     },
 
     async listByAuthor(authorId, options) {
       const { data, error } = await client()
-        .from('posts')
-        .select(`
+        .from("posts")
+        .select(
+          `
           id,
           author_id,
           body,
@@ -234,43 +320,58 @@ export const supabaseAdapter: BackendAdapter = {
           deleted_at,
           author:profiles!posts_author_id_fkey(handle, display_name, avatar_url),
           post_reaction_counts(count)
-        `)
-        .eq('author_id', authorId)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(options?.limit ?? 50)
+        `,
+        )
+        .eq("author_id", authorId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(options?.limit ?? 50);
 
       if (error) {
-        throw new BackendError('server_error', 'Could not load member posts. Retry in a moment.')
+        throw new BackendError(
+          "server_error",
+          "Could not load member posts. Retry in a moment.",
+        );
       }
-      return enrichPosts((data ?? []) as Record<string, unknown>[])
+      return enrichPosts((data ?? []) as Record<string, unknown>[]);
     },
 
     async create(input) {
-      const session = await supabaseAdapter.auth.getSession()
-      if (!session) throw new BackendError('auth_required', 'Sign in to create a post.')
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError("auth_required", "Sign in to create a post.");
 
-      const body = input.body.trim()
+      const body = input.body.trim();
       if (body.length === 0) {
-        throw new BackendError('validation_failed', 'Post body cannot be empty.')
+        throw new BackendError(
+          "validation_failed",
+          "Post body cannot be empty.",
+        );
       }
       if (body.length > 2000) {
-        throw new BackendError('validation_failed', 'Post exceeds the 2000-character limit.')
+        throw new BackendError(
+          "validation_failed",
+          "Post exceeds the 2000-character limit.",
+        );
       }
 
-      const visibility = input.visibility ?? 'public'
-      if (visibility === 'group') {
-        throw new BackendError('validation_failed', 'Group visibility is planned for Phase 3.')
+      const visibility = input.visibility ?? "friends";
+      if (visibility !== "friends") {
+        throw new BackendError(
+          "validation_failed",
+          "The marsh is private right now. Posts are member-only.",
+        );
       }
 
       const { data, error } = await client()
-        .from('posts')
+        .from("posts")
         .insert({
           author_id: session.userId,
           body,
           visibility,
         })
-        .select(`
+        .select(
+          `
           id,
           author_id,
           body,
@@ -280,113 +381,133 @@ export const supabaseAdapter: BackendAdapter = {
           deleted_at,
           author:profiles!posts_author_id_fkey(handle, display_name, avatar_url),
           post_reaction_counts(count)
-        `)
-        .single()
+        `,
+        )
+        .single();
 
       if (error) {
-        throw new BackendError('server_error', 'Could not share your post. Try again.')
+        throw new BackendError(
+          "server_error",
+          "Could not share your post. Try again.",
+        );
       }
-      return mapPost(data as Record<string, unknown>, [], {})
+      return mapPost(data as Record<string, unknown>, [], {});
     },
 
     async delete(postId) {
-      const session = await supabaseAdapter.auth.getSession()
-      if (!session) throw new BackendError('auth_required', 'Sign in to delete posts.')
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError("auth_required", "Sign in to delete posts.");
 
       // Soft-delete per §6.3; update deleted_at
       const { error } = await client()
-        .from('posts')
+        .from("posts")
         .update({ deleted_at: new Date().toISOString() })
-        .eq('id', postId)
+        .eq("id", postId);
 
       if (error) {
         // Fallback to hard-delete if soft-delete encounters policy restriction
-        const { error: delErr } = await client().from('posts').delete().eq('id', postId)
+        const { error: delErr } = await client()
+          .from("posts")
+          .delete()
+          .eq("id", postId);
         if (delErr) {
-          throw new BackendError('server_error', 'Could not delete post. Try again in a moment.')
+          throw new BackendError(
+            "server_error",
+            "Could not delete post. Try again in a moment.",
+          );
         }
       }
     },
 
     async toggleReaction(postId, reactionType) {
-      const session = await supabaseAdapter.auth.getSession()
-      if (!session) throw new BackendError('auth_required', 'Sign in to react.')
+      const session = await supabaseAdapter.auth.getSession();
+      if (!session)
+        throw new BackendError("auth_required", "Sign in to react.");
 
       const { data: existing, error: checkErr } = await client()
-        .from('reactions')
-        .select('type')
-        .eq('user_id', session.userId)
-        .eq('reactable_type', 'post')
-        .eq('reactable_id', postId)
-        .eq('type', reactionType)
-        .maybeSingle()
+        .from("reactions")
+        .select("type")
+        .eq("user_id", session.userId)
+        .eq("reactable_type", "post")
+        .eq("reactable_id", postId)
+        .eq("type", reactionType)
+        .maybeSingle();
 
       if (checkErr) {
-        throw new BackendError('server_error', 'Could not check reaction.')
+        throw new BackendError("server_error", "Could not check reaction.");
       }
 
       if (existing) {
         const { error } = await client()
-          .from('reactions')
+          .from("reactions")
           .delete()
-          .eq('user_id', session.userId)
-          .eq('reactable_type', 'post')
-          .eq('reactable_id', postId)
-          .eq('type', reactionType)
-        if (error) throw new BackendError('server_error', 'Could not remove reaction.')
-        return { reacted: false }
+          .eq("user_id", session.userId)
+          .eq("reactable_type", "post")
+          .eq("reactable_id", postId)
+          .eq("type", reactionType);
+        if (error)
+          throw new BackendError("server_error", "Could not remove reaction.");
+        return { reacted: false };
       } else {
-        const { error } = await client()
-          .from('reactions')
-          .insert({
-            user_id: session.userId,
-            reactable_type: 'post',
-            reactable_id: postId,
-            type: reactionType,
-          })
-        if (error) throw new BackendError('server_error', 'Could not add reaction.')
-        return { reacted: true }
+        const { error } = await client().from("reactions").insert({
+          user_id: session.userId,
+          reactable_type: "post",
+          reactable_id: postId,
+          type: reactionType,
+        });
+        if (error)
+          throw new BackendError("server_error", "Could not add reaction.");
+        return { reacted: true };
       }
     },
 
     async getReactionTypes(): Promise<ReactionType[]> {
       const { data, error } = await client()
-        .from('reaction_types')
-        .select('*')
-        .eq('active', true)
-        .order('sort', { ascending: true })
+        .from("reaction_types")
+        .select("*")
+        .eq("active", true)
+        .order("sort", { ascending: true });
 
       if (error) {
-        throw new BackendError('server_error', 'Could not load reaction types.')
+        throw new BackendError(
+          "server_error",
+          "Could not load reaction types.",
+        );
       }
       return (data ?? []).map((row) => ({
         key: String(row.key),
         label: String(row.label),
         glyph: String(row.glyph),
         sort: Number(row.sort),
-      }))
+      }));
     },
   },
-}
+};
 
 function mapPost(
   row: Record<string, unknown>,
   userReactions: string[] = [],
-  breakdown: Record<string, number> = {}
+  breakdown: Record<string, number> = {},
 ): Post {
-  const authorData = (row.author as Record<string, unknown> | null) ?? {}
-  const rawCounts = row.post_reaction_counts as { count: number } | Array<{ count: number }> | null
-  const countVal = Array.isArray(rawCounts) ? rawCounts[0]?.count : rawCounts?.count
+  const authorData = (row.author as Record<string, unknown> | null) ?? {};
+  const rawCounts = row.post_reaction_counts as
+    { count: number } | Array<{ count: number }> | null;
+  const countVal = Array.isArray(rawCounts)
+    ? rawCounts[0]?.count
+    : rawCounts?.count;
   return {
     id: String(row.id),
     authorId: String(row.author_id),
     author: {
-      handle: String(authorData.handle ?? 'someone'),
-      displayName: String(authorData.display_name ?? authorData.handle ?? 'Someone'),
+      handle: String(authorData.handle ?? "someone"),
+      displayName: String(
+        authorData.display_name ?? authorData.handle ?? "Someone",
+      ),
       avatarUrl: (authorData.avatar_url as string | null) ?? null,
     },
     body: String(row.body),
-    visibility: (row.visibility as Visibility) ?? 'public',
+    visibility: (row.visibility as Visibility) ?? "public",
     mediaUrls: [],
     createdAt: String(row.created_at),
     editedAt: (row.updated_at as string | null) ?? null,
@@ -395,49 +516,55 @@ function mapPost(
     commentCount: 0,
     myReactions: userReactions,
     reactionBreakdown: breakdown,
-  }
+  };
 }
 
 async function enrichPosts(rows: Record<string, unknown>[]): Promise<Post[]> {
-  if (rows.length === 0) return []
-  const postIds = rows.map((r) => String(r.id))
+  if (rows.length === 0) return [];
+  const postIds = rows.map((r) => String(r.id));
 
-  const session = await supabaseAdapter.auth.getSession()
+  const session = await supabaseAdapter.auth.getSession();
 
   const [userReactionsRes, allReactionsRes] = await Promise.all([
     session
       ? client()
-          .from('reactions')
-          .select('reactable_id, type')
-          .eq('reactable_type', 'post')
-          .eq('user_id', session.userId)
-          .in('reactable_id', postIds)
+          .from("reactions")
+          .select("reactable_id, type")
+          .eq("reactable_type", "post")
+          .eq("user_id", session.userId)
+          .in("reactable_id", postIds)
       : Promise.resolve({ data: null, error: null }),
     client()
-      .from('reactions')
-      .select('reactable_id, type')
-      .eq('reactable_type', 'post')
-      .in('reactable_id', postIds),
-  ])
+      .from("reactions")
+      .select("reactable_id, type")
+      .eq("reactable_type", "post")
+      .in("reactable_id", postIds),
+  ]);
 
-  const userReactionsMap = new Map<string, string[]>()
+  const userReactionsMap = new Map<string, string[]>();
   if (userReactionsRes.data) {
-    for (const r of userReactionsRes.data as Array<{ reactable_id: string; type: string }>) {
-      const pid = String(r.reactable_id)
-      const list = userReactionsMap.get(pid) ?? []
-      list.push(String(r.type))
-      userReactionsMap.set(pid, list)
+    for (const r of userReactionsRes.data as Array<{
+      reactable_id: string;
+      type: string;
+    }>) {
+      const pid = String(r.reactable_id);
+      const list = userReactionsMap.get(pid) ?? [];
+      list.push(String(r.type));
+      userReactionsMap.set(pid, list);
     }
   }
 
-  const breakdownMap = new Map<string, Record<string, number>>()
+  const breakdownMap = new Map<string, Record<string, number>>();
   if (allReactionsRes.data) {
-    for (const r of allReactionsRes.data as Array<{ reactable_id: string; type: string }>) {
-      const pid = String(r.reactable_id)
-      const counts = breakdownMap.get(pid) ?? {}
-      const type = String(r.type)
-      counts[type] = (counts[type] ?? 0) + 1
-      breakdownMap.set(pid, counts)
+    for (const r of allReactionsRes.data as Array<{
+      reactable_id: string;
+      type: string;
+    }>) {
+      const pid = String(r.reactable_id);
+      const counts = breakdownMap.get(pid) ?? {};
+      const type = String(r.type);
+      counts[type] = (counts[type] ?? 0) + 1;
+      breakdownMap.set(pid, counts);
     }
   }
 
@@ -445,48 +572,65 @@ async function enrichPosts(rows: Record<string, unknown>[]): Promise<Post[]> {
     mapPost(
       row,
       userReactionsMap.get(String(row.id)) ?? [],
-      breakdownMap.get(String(row.id)) ?? {}
-    )
-  )
+      breakdownMap.get(String(row.id)) ?? {},
+    ),
+  );
 }
 
 /** HEAD count query against `table` filtered by `matchColumn = value`. */
-async function countRows(table: string, selectColumn: string, matchColumn: string, value: string): Promise<number> {
+async function countRows(
+  table: string,
+  selectColumn: string,
+  matchColumn: string,
+  value: string,
+): Promise<number> {
   const { count, error } = await client()
     .from(table)
-    .select(selectColumn, { count: 'exact', head: true })
-    .eq(matchColumn, value)
-  if (error) throw new BackendError('server_error', 'Could not load follow counts. Retry in a moment.')
-  return count ?? 0
+    .select(selectColumn, { count: "exact", head: true })
+    .eq(matchColumn, value);
+  if (error)
+    throw new BackendError(
+      "server_error",
+      "Could not load follow counts. Retry in a moment.",
+    );
+  return count ?? 0;
 }
 
 /** Maps Supabase auth messages to §3.3 codes. */
 function mapAuthCode(message: string) {
-  const m = message.toLowerCase()
-  if (m.includes('already registered')) return 'conflict'
-  if (m.includes('invalid login') || m.includes('invalid credentials')) return 'auth_invalid'
-  if (m.includes('rate limit') || m.includes('too many') || m.includes('email rate limit')) return 'rate_limited'
-  if (m.includes('password')) return 'validation_failed'
-  if (m.includes('email not confirmed')) return 'auth_invalid'
-  return 'server_error'
+  const m = message.toLowerCase();
+  if (m.includes("already registered")) return "conflict";
+  if (m.includes("invalid login") || m.includes("invalid credentials"))
+    return "auth_invalid";
+  if (
+    m.includes("rate limit") ||
+    m.includes("too many") ||
+    m.includes("email rate limit")
+  )
+    return "rate_limited";
+  if (m.includes("password")) return "validation_failed";
+  if (m.includes("email not confirmed")) return "auth_invalid";
+  return "server_error";
 }
 
 const AUTH_MESSAGES: Record<string, string> = {
-  conflict: 'An account with this email already exists. Try signing in instead.',
-  auth_invalid: 'Email or password is incorrect.',
-  rate_limited: 'Too many attempts. Please wait a minute and try again.',
-  validation_failed: 'That password does not meet the requirements.',
-  server_error: 'Sign-in is having trouble right now. Please try again shortly.',
-}
+  conflict:
+    "An account with this email already exists. Try signing in instead.",
+  auth_invalid: "Email or password is incorrect.",
+  rate_limited: "Too many attempts. Please wait a minute and try again.",
+  validation_failed: "That password does not meet the requirements.",
+  server_error:
+    "Sign-in is having trouble right now. Please try again shortly.",
+};
 
 function humanAuthMessage(message: string): string {
-  const code = mapAuthCode(message)
-  if (code === 'validation_failed') {
-    return 'Password must be at least 8 characters.'
+  const code = mapAuthCode(message);
+  if (code === "validation_failed") {
+    return "Password must be at least 8 characters.";
   }
-  return AUTH_MESSAGES[code]
+  return AUTH_MESSAGES[code];
 }
 
 function humanProfileMessage(): string {
-  return 'Could not save your profile. Check the values and try again.'
+  return "Could not save your profile. Check the values and try again.";
 }

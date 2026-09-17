@@ -19,7 +19,7 @@ interface LoadedProfile {
 }
 
 /**
- * Member profile (§7.2): public page for any handle, with follow/unfollow
+ * Member profile (§7.2): private page for any handle, with follow/unfollow
  * (§7.4, one-way in this phase) for signed-in members. Server-side RLS is
  * authoritative — the follow button just drives it.
  */

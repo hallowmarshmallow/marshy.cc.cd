@@ -6,22 +6,22 @@
 
 :root {
   /* Colors (mirrors colorTokens) */
-  --color-bg: #0b0f0d;
-  --color-surface: #121816;
-  --color-surface-raised: #1a2320;
+  --color-bg: #080c18;
+  --color-surface: #0e1628;
+  --color-surface-raised: #16233d;
 
-  --color-accent: #6fe3b2;
-  --color-accent-strong: #8ff0c4;
-  --color-accent-dim: #3fae82;
-  --color-accent-alt: #b39ddb;
-  --color-accent-warm: #e8b06f;
+  --color-accent: #73e8ff;
+  --color-accent-strong: #b8f5ff;
+  --color-accent-dim: #36b6d1;
+  --color-accent-alt: #b9a8ff;
+  --color-accent-warm: #ffc98a;
 
-  --color-text: #e6efea;
-  --color-text-muted: #9db4aa;
-  --color-text-faint: #7a9187;
+  --color-text: #edf7ff;
+  --color-text-muted: #a5b8cc;
+  --color-text-faint: #7387a1;
 
-  --color-border: #243230;
-  --color-border-strong: #33473f;
+  --color-border: #20314d;
+  --color-border-strong: #315074;
 
   --color-danger: #ff8a80;
   --color-success: #7bdc9a;
@@ -60,14 +60,14 @@
   --z-toast: 400;
 
   /* Typography */
-  --font-display: 'Sora', system-ui, sans-serif;
-  --font-serif: 'Cormorant Garamond', Georgia, serif;
-  --font-body: 'Inter', system-ui, sans-serif;
+  --font-display: "Sora", system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Inter", system-ui, sans-serif;
 
   /* Glass (used selectively: nav, modals, cards over atmosphere) */
-  --glass-bg: rgba(18, 24, 22, 0.72);
-  --glass-blur: 12px;
-  --glass-border: rgba(111, 227, 178, 0.14);
+  --glass-bg: rgba(14, 22, 40, 0.78);
+  --glass-blur: 18px;
+  --glass-border: rgba(115, 232, 255, 0.16);
 
   color-scheme: dark;
 }
@@ -88,7 +88,13 @@ html {
 
 body {
   min-height: 100dvh;
-  background: var(--color-bg);
+  background:
+    radial-gradient(
+      circle at 50% -20%,
+      rgba(115, 232, 255, 0.08),
+      transparent 36rem
+    ),
+    var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 16px;
@@ -137,7 +143,7 @@ a:hover {
 }
 
 ::selection {
-  background: rgba(111, 227, 178, 0.25);
+  background: rgba(115, 232, 255, 0.25);
 }
 
 @media (prefers-reduced-motion: reduce) {
